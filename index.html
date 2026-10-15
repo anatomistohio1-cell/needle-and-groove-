@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#11110f">
+  <meta name="description" content="A beautifully tactile vinyl turntable for the music you already own. Play your local music privately, right in your browser.">
+  <meta name="color-scheme" content="dark">
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Needle%20%26%20Groove%22%2C%22short_name%22%3A%22Needle%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%2311110f%22%2C%22theme_color%22%3A%22%2311110f%22%7D">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <title>Needle &amp; Groove — Local Vinyl Player</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #11110f;
+      --bg-soft: #171714;
+      --panel: rgba(31, 30, 26, .76);
+      --panel-solid: #1d1c18;
+      --panel-raised: #25231d;
+      --line: rgba(232, 216, 179, .11);
+      --line-strong: rgba(232, 216, 179, .2);
+      --text: #f1eee7;
+      --muted: #89877f;
+      --quiet: #5e5d57;
+      --accent: #d7b77b;
+      --accent-bright: #f1d9a2;
+      --accent-rgb: 215, 183, 123;
+      --plinth: #3b3023;
+      --plinth-edge: #211b14;
+      --groove: rgba(255, 255, 255, .095);
+      --shadow: rgba(0, 0, 0, .45);
+      font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+    [data-theme="wisteria"] {
+      --bg: #100d18;
+      --bg-soft: #191323;
+      --panel: rgba(33, 24, 45, .84);
+      --panel-solid: #21182e;
+      --panel-raised: #30213f;
+      --line: rgba(224, 192, 246, .14);
+      --line-strong: rgba(231, 201, 251, .29);
+      --text: #faf1ff;
+      --muted: #bdabc9;
+      --quiet: #82718f;
+      --accent: #c792eb;
+      --accent-bright: #f0d0ff;
+      --accent-rgb: 199, 146, 235;
+      --plinth: #49314f;
+      --plinth-edge: #21152b;
+      --groove: rgba(242, 219, 255, .11);
+      --shadow: rgba(6, 2, 12, .62);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at 50% -20%, rgba(var(--accent-rgb), .11), transparent 48%),
+        radial-gradient(ellipse at 4% 70%, rgba(var(--accent-rgb), .035), transparent 28%),
+        var(--bg);
+      transition: background-color .4s, color .4s;
+    }
+    [data-theme="wisteria"] body { background: radial-gradient(ellipse at 50% -13%,rgba(194,126,231,.2),transparent 48%),radial-gradient(ellipse at 92% 41%,rgba(130,83,176,.15),transparent 32%),radial-gradient(ellipse at 8% 78%,rgba(129,193,171,.08),transparent 30%),linear-gradient(145deg,#100d18,#181126 53%,#100d18); }
+    .theme-backdrop { position: fixed; z-index: 0; inset: 0; background-position: center 18%; background-repeat: no-repeat; background-size: cover; opacity: 0; pointer-events: none; transition: opacity .45s; }
+    [data-theme="wisteria"] .theme-backdrop.has-art { opacity: .42; }
+    [data-theme="wisteria"] .theme-backdrop.has-art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg,rgba(21,18,27,.72),rgba(21,18,27,.24) 58%,rgba(21,18,27,.55)),linear-gradient(0deg,rgba(21,18,27,.82),transparent 72%); }
+    .wisteria-atmosphere { position: fixed; z-index: 0; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; transition: opacity .65s ease; }
+    [data-theme="wisteria"] .wisteria-atmosphere { opacity: .88; }
+    .wisteria-atmosphere .firefly { animation: firefly-drift 9s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+    .wisteria-atmosphere .firefly:nth-of-type(2) { animation-delay: -4s; animation-duration: 12s; }
+    .wisteria-atmosphere .firefly:nth-of-type(3) { animation-delay: -7s; animation-duration: 10s; }
+    .wisteria-atmosphere .butterfly-flight { animation: butterfly-drift 8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+    @keyframes firefly-drift { to { opacity: .35; transform: translate3d(0,-13px,0); } }
+    @keyframes butterfly-drift { 0%,100% { transform: translate(0,0) rotate(-2deg); } 50% { transform: translate(-9px,-12px) rotate(3deg); } }
+    .character-art-prompt { display: none; position: relative; align-items: center; justify-content: space-between; gap: 14px; margin: -12px 0 21px; padding: 15px 17px 15px 54px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 13px; background: linear-gradient(105deg,rgba(var(--accent-rgb),.13),rgba(49,32,62,.82) 48%,rgba(25,19,35,.92)); box-shadow: inset 0 1px rgba(255,255,255,.08),0 10px 28px rgba(6,2,12,.18); }
+    .character-art-prompt::before { content: ""; position: absolute; left: 17px; top: 50%; width: 24px; height: 24px; transform: translateY(-50%) rotate(45deg); border: 1px solid rgba(var(--accent-rgb),.62); border-radius: 7px 14px 7px 14px; background: radial-gradient(circle at 70% 30%,rgba(255,255,255,.8),transparent 13%),linear-gradient(135deg,rgba(199,146,235,.7),rgba(95,65,135,.2)); box-shadow: 0 0 22px rgba(var(--accent-rgb),.28); }
+    [data-theme="wisteria"] .character-art-prompt { display: flex; }
+    .character-art-copy { min-width: 0; }
+    .character-art-title { display: block; font: 600 11px "Playfair Display", Georgia, serif; letter-spacing: .02em; }
+    .character-art-note { display: block; margin-top: 5px; color: var(--muted); font-size: 9px; line-height: 1.5; }
+    .character-art-button { min-height: 36px; flex: 0 0 auto; padding: 0 12px; border: 1px solid rgba(var(--accent-rgb),.48); border-radius: 8px; background: linear-gradient(135deg,rgba(var(--accent-rgb),.2),rgba(var(--accent-rgb),.07)); color: var(--accent-bright); cursor: pointer; font-size: 9px; transition: .2s ease; }
+    .character-art-button:hover { border-color: rgba(var(--accent-rgb),.8); background: rgba(var(--accent-rgb),.24); box-shadow: 0 0 20px rgba(var(--accent-rgb),.17); }
+    .art-file-input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); clip-path: inset(50%); }
+    .online-art-option { display: grid; grid-template-columns: 14px minmax(0,1fr); column-gap: 7px; align-items: center; margin-top: 12px; color: var(--muted); font-size: 9px; cursor: pointer; }
+    .online-art-option input { grid-row: span 2; margin: 0; accent-color: var(--accent); }
+    .online-art-option small { grid-column: 2; margin-top: 3px; color: var(--quiet); font-size: 8px; line-height: 1.4; }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, label:focus-within { outline: 2px solid var(--accent); outline-offset: 4px; }
+    .app-shell { position: relative; z-index: 1; max-width: 1440px; margin: 0 auto; padding: 0 56px 42px; }
+    .topbar {
+      height: 88px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+    .brand-mark {
+      width: 38px; height: 38px; display: grid; place-items: center;
+      border: 1px solid var(--line-strong); border-radius: 50%;
+      color: var(--accent); background: linear-gradient(145deg, rgba(var(--accent-rgb), .13), transparent 68%);
+      box-shadow: inset 0 0 15px rgba(var(--accent-rgb), .05);
+    }
+    .brand-mark svg { width: 21px; height: 21px; }
+    .brand-copy { line-height: 1.12; }
+    .brand-name { font-family: "Playfair Display", Georgia, serif; font-size: 17px; letter-spacing: .015em; }
+    .brand-caption { margin-top: 5px; color: var(--muted); font: 9px "DM Mono", monospace; letter-spacing: .17em; text-transform: uppercase; }
+    .header-right { display: flex; align-items: center; gap: 19px; }
+    .private-note { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
+    .private-note svg { color: var(--accent); }
+    .theme-button {
+      display: inline-flex; align-items: center; gap: 9px; min-height: 39px;
+      padding: 0 13px; border: 1px solid var(--line-strong); border-radius: 999px;
+      background: rgba(255,255,255,.025); color: var(--text); cursor: pointer;
+      font-size: 11px; transition: .2s ease;
+    }
+    .theme-button:hover { border-color: rgba(var(--accent-rgb), .55); background: rgba(var(--accent-rgb), .07); }
+    .theme-swatch { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px rgba(var(--accent-rgb), .65); }
+    [data-theme="wisteria"] .theme-button { border-color: rgba(var(--accent-rgb),.4); background: linear-gradient(120deg,rgba(var(--accent-rgb),.12),rgba(255,255,255,.025)); box-shadow: inset 0 1px rgba(255,255,255,.07),0 3px 14px rgba(99,55,128,.12); }
+    [data-theme="wisteria"] .theme-swatch { background: linear-gradient(135deg,#f1d5ff 0 48%,#9c72c5 50%); box-shadow: 0 0 12px rgba(var(--accent-rgb),.72); }
+    main { padding-top: 40px; }
+    .intro { margin-bottom: 27px; }
+    .eyebrow { display: flex; align-items: center; gap: 9px; color: var(--accent); font: 10px "DM Mono", monospace; letter-spacing: .18em; text-transform: uppercase; }
+    .eyebrow::before { content: ""; width: 19px; height: 1px; background: var(--accent); opacity: .7; }
+    h1 { margin: 9px 0 0; font: 500 clamp(27px, 3.4vw, 40px)/1.15 "Playfair Display", Georgia, serif; letter-spacing: -.025em; }
+    .subtitle { margin: 9px 0 0; color: var(--muted); font-size: 12px; }
+    [data-theme="wisteria"] .eyebrow { letter-spacing: .22em; }
+    [data-theme="wisteria"] .eyebrow::before { width: 27px; box-shadow: 12px 4px 0 -0.5px rgba(var(--accent-rgb),.45); }
+    [data-theme="wisteria"] h1 { text-shadow: 0 0 35px rgba(var(--accent-rgb),.2); }
+    .studio-grid { display: grid; grid-template-columns: minmax(0, 1.47fr) minmax(315px, .83fr); gap: 22px; align-items: stretch; }
+    .deck-card, .library-card {
+      min-width: 0; border: 1px solid var(--line); border-radius: 17px;
+      background: linear-gradient(140deg, rgba(255,255,255,.035), transparent 45%), var(--panel);
+      box-shadow: 0 24px 70px var(--shadow), inset 0 1px rgba(255,255,255,.045);
+      backdrop-filter: blur(18px);
+    }
+    .deck-card { padding: 22px 24px 21px; }
+    .deck-topline { display: flex; justify-content: space-between; align-items: center; min-height: 18px; }
+    .deck-label { color: var(--muted); font: 9px "DM Mono", monospace; letter-spacing: .16em; text-transform: uppercase; }
+    .power-state { display: flex; align-items: center; gap: 7px; color: var(--muted); font: 9px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; }
+    .power-led { width: 6px; height: 6px; border-radius: 50%; background: #55534c; transition: .3s; }
+    .is-on .power-led { background: #a9cb91; box-shadow: 0 0 9px rgba(169,203,145,.8); }
+    .turntable {
+      position: relative; min-height: 364px; margin: 17px 0 17px; overflow: hidden;
+      display: grid; place-items: center; border-radius: 13px;
+      background:
+        radial-gradient(ellipse at 47% 51%, rgba(var(--accent-rgb), .06), transparent 52%),
+        linear-gradient(135deg, rgba(255,255,255,.04), transparent 30%, rgba(0,0,0,.12)),
+        #191815;
+      border: 1px solid rgba(255,255,255,.055);
+    }
+    [data-theme="wisteria"] .turntable { background: radial-gradient(ellipse at 47% 51%, rgba(var(--accent-rgb), .1), transparent 52%), linear-gradient(135deg, rgba(255,255,255,.04), transparent 30%, rgba(0,0,0,.12)), #1c1821; }
+    [data-theme="wisteria"] .turntable { background: radial-gradient(ellipse at 46% 51%,rgba(var(--accent-rgb),.18),transparent 54%),radial-gradient(ellipse at 90% 10%,rgba(117,81,147,.18),transparent 34%),linear-gradient(135deg,rgba(255,255,255,.055),transparent 30%,rgba(0,0,0,.2)),#17121d; border-color:rgba(var(--accent-rgb),.18); }
+    .turntable::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .18; background: repeating-linear-gradient(115deg, transparent 0 4px, rgba(255,255,255,.025) 5px, transparent 6px 12px); }
+    .plinth {
+      position: relative; width: min(76%, 485px); aspect-ratio: 1.55;
+      border: 1px solid rgba(245,220,173,.19); border-radius: 11px;
+      background:
+        linear-gradient(115deg, rgba(255,255,255,.11), transparent 19% 72%, rgba(0,0,0,.35)),
+        repeating-linear-gradient(92deg, transparent 0 5px, rgba(0,0,0,.045) 6px, transparent 8px 14px),
+        linear-gradient(145deg, color-mix(in srgb, var(--plinth), #fff 8%), var(--plinth) 48%, var(--plinth-edge));
+      box-shadow: 0 18px 25px rgba(0,0,0,.48), 0 4px 2px rgba(255,255,255,.1) inset, 0 -7px 10px rgba(0,0,0,.32) inset;
+    }
+    .plinth::after { content: ""; position: absolute; inset: 5px; border: 1px solid rgba(255,255,255,.08); border-radius: 7px; pointer-events: none; }
+    [data-theme="wisteria"] .plinth { border-color: rgba(230,190,248,.35); background: linear-gradient(115deg,rgba(255,255,255,.13),transparent 19% 72%,rgba(0,0,0,.4)),repeating-linear-gradient(92deg,transparent 0 5px,rgba(8,3,14,.12) 6px,transparent 8px 14px),linear-gradient(145deg,#684a6c,#49314f 48%,#21152b); box-shadow: 0 20px 30px rgba(3,1,8,.6),0 4px 2px rgba(255,255,255,.13) inset,0 -7px 10px rgba(0,0,0,.38) inset,0 0 34px rgba(154,105,183,.12); }
+    [data-theme="wisteria"] .plinth::after { border-color:rgba(244,220,255,.17); }
+    .plinth-badge { position: absolute; left: 5%; bottom: 8%; color: rgba(255,235,196,.66); font: 7px "DM Mono", monospace; letter-spacing: .17em; text-transform: uppercase; }
+    [data-theme="wisteria"] .plinth-badge { color:rgba(244,216,255,.73); }
+    .platter {
+      position: absolute; left: 7%; top: 9%; width: 55%; aspect-ratio: 1;
+      border-radius: 50%; border: 5px solid #6d6b66;
+      background:
+        radial-gradient(circle at center, #171717 0 3.6%, #a3a09a 3.8% 4.2%, #65635e 4.5% 4.9%, transparent 5.1%),
+        radial-gradient(circle at center, transparent 0 66%, rgba(255,255,255,.09) 66.2% 66.6%, transparent 67% 81%, rgba(255,255,255,.08) 81.2% 81.7%, transparent 82%),
+        radial-gradient(circle at center, #262626 0 59%, #161616 60% 72%, #343434 73% 82%, #212121 83% 100%);
+      box-shadow: 0 0 0 4px #292824, 0 5px 9px rgba(0,0,0,.45), 0 0 0 6px rgba(255,255,255,.08), inset 0 0 20px rgba(0,0,0,.65);
+      transition: transform 1.1s cubic-bezier(.2,.7,.2,1);
+    }
+    .platter::before {
+      content: ""; position: absolute; inset: 5.5%; border-radius: 50%;
+      background: repeating-radial-gradient(circle, transparent 0 2px, var(--groove) 2.6px 3px, transparent 3.8px 5px);
+      opacity: .5; mix-blend-mode: screen;
+    }
+    .platter::after { content: ""; position: absolute; inset: 2%; border-radius: 50%; border: 1px solid rgba(255,255,255,.08); box-shadow: inset 0 0 18px rgba(0,0,0,.6); }
+    .vinyl-label {
+      position: absolute; z-index: 1; left: 50%; top: 50%; width: 27%; aspect-ratio: 1;
+      display: grid; place-items: center; overflow: hidden; transform: translate(-50%,-50%);
+      border: 1px solid rgba(255,255,255,.25); border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 25%, rgba(255,255,255,.23), transparent 42%),
+        linear-gradient(145deg, rgba(var(--accent-rgb),.84), color-mix(in srgb, var(--accent), #322820 43%));
+      box-shadow: 0 1px 8px rgba(0,0,0,.45), inset 0 0 0 3px rgba(0,0,0,.12);
+      color: #211b13; text-align: center;
+    }
+    .label-copy { max-width: 75%; overflow: hidden; }
+    .label-title { display: block; overflow: hidden; font: 600 clamp(6px, .8vw, 9px)/1.2 "DM Sans", sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+    .label-artist { display: block; margin-top: 3px; font: 6px "DM Mono", monospace; opacity: .72; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .label-center { position: absolute; width: 5px; height: 5px; bottom: 17%; border: 1px solid rgba(0,0,0,.45); border-radius: 50%; background: #dfdbce; }
+    .tonearm {
+      position: absolute; z-index: 3; left: 69%; top: 12%; width: 7%; height: 67%;
+      transform: rotate(-24deg); transform-origin: 50% 7%;
+      transition: transform 1.15s cubic-bezier(.2,.72,.24,1);
+      filter: drop-shadow(2px 4px 3px rgba(0,0,0,.5));
+    }
+    .tonearm::before { content: ""; position: absolute; left: calc(50% - 2px); top: 11%; width: 4px; height: 74%; border-radius: 4px; background: linear-gradient(90deg,#55534d,#e0ded4 38%,#88867f 70%,#4e4c47); }
+    .tonearm-pivot { position: absolute; left: 50%; top: 0; width: 19px; height: 19px; transform: translateX(-50%); border: 3px solid #aaa79d; border-radius: 50%; background: radial-gradient(circle at 35% 30%,#e3dfd1,#4b4943 53%,#171715 70%); box-shadow: 0 1px 4px #000; }
+    .tonearm-head { position: absolute; left: 50%; top: 79%; width: 21px; height: 31px; transform: translateX(-50%) rotate(11deg); border: 1px solid #55534d; border-radius: 3px 3px 5px 5px; background: linear-gradient(90deg,#3f3e39,#c0bcb0 45%,#4a4943); }
+    .tonearm-head::after { content: ""; position: absolute; left: 50%; bottom: -7px; width: 1px; height: 9px; background: #d9cda8; transform: translateX(-50%); }
+    .is-on .tonearm { transform: rotate(2deg); }
+    .is-on.playing .tonearm { transform: rotate(9deg); }
+    .power-button {
+      position: absolute; right: 7%; bottom: 13%; z-index: 4; width: 43px; height: 43px;
+      display: grid; place-items: center; border: 1px solid rgba(255,255,255,.29); border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%,#68665f,#272722 64%,#171715);
+      box-shadow: 0 3px 7px rgba(0,0,0,.65), inset 0 1px 2px rgba(255,255,255,.35), 0 -2px 3px rgba(0,0,0,.5);
+      cursor: pointer; transition: .2s;
+    }
+    .power-button:hover { transform: translateY(-1px); border-color: rgba(var(--accent-rgb),.7); }
+    [data-theme="wisteria"] .power-button { border-color:rgba(246,219,255,.36); background:radial-gradient(circle at 35% 30%,#947aa0,#382a40 64%,#1a1420); }
+    .power-button:active { transform: translateY(1px); }
+    .power-button svg { width: 18px; height: 18px; color: #c9c6bb; }
+    .is-on .power-button { box-shadow: 0 0 17px rgba(var(--accent-rgb),.22), 0 3px 7px rgba(0,0,0,.65), inset 0 1px 2px rgba(255,255,255,.35); }
+    .is-on .power-button svg { color: var(--accent-bright); }
+    .effects-panel { margin-top: 17px; border: 1px solid var(--line); border-radius: 10px; background: rgba(0,0,0,.12); }
+    .effects-panel summary { min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 13px; color: var(--text); cursor: pointer; list-style: none; font-size: 10px; }
+    .effects-panel summary::-webkit-details-marker { display: none; }
+    .effects-panel summary::after { content: "+"; color: var(--accent); font: 17px "DM Sans", sans-serif; }
+    .effects-panel[open] summary::after { content: "−"; }
+    [data-theme="wisteria"] .effects-panel { background:linear-gradient(110deg,rgba(var(--accent-rgb),.055),rgba(0,0,0,.16)); }
+    .effects-title { display: inline-flex; align-items: center; gap: 8px; }
+    .effects-title svg { width: 15px; height: 15px; color: var(--accent); }
+    .effects-hint { margin-left: auto; color: var(--muted); font: 8px "DM Mono", monospace; letter-spacing: .07em; text-transform: uppercase; }
+    .effects-body { padding: 0 13px 13px; }
+    .mode-picker { display: grid; gap: 7px; padding: 0 0 11px; }
+    .mode-picker label { color: var(--muted); font: 8px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; }
+    .mode-picker select { width: 100%; min-height: 36px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--panel-raised); color: var(--text); font: 10px "DM Sans", sans-serif; }
+    .mode-description { min-height: 27px; margin: 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+    .spatial-row { min-height: 46px; display: flex; justify-content: space-between; align-items: center; gap: 14px; border-top: 1px solid var(--line); }
+    .spatial-copy { min-width: 0; }
+    .spatial-name { display: block; font-size: 10px; font-weight: 600; }
+    .spatial-note { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; }
+    .switch { position: relative; width: 36px; height: 20px; flex: 0 0 auto; }
+    .switch input { position: absolute; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+    .switch-track { position: absolute; inset: 0; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(255,255,255,.06); pointer-events: none; transition: .2s; }
+    .switch-track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); transition: .2s; }
+    .switch input:checked + .switch-track { border-color: rgba(var(--accent-rgb),.7); background: rgba(var(--accent-rgb),.2); }
+    .switch input:checked + .switch-track::after { left: 19px; background: var(--accent-bright); box-shadow: 0 0 8px rgba(var(--accent-rgb),.55); }
+    .switch input:focus-visible + .switch-track { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .eq-heading { display: flex; justify-content: space-between; align-items: center; padding: 12px 0 6px; border-top: 1px solid var(--line); }
+    .eq-heading span { color: var(--muted); font: 8px "DM Mono", monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .eq-reset { padding: 3px 0 3px 8px; border: 0; background: none; color: var(--accent); cursor: pointer; font-size: 9px; }
+    .eq-bands { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+    .eq-band { min-width: 0; display: grid; gap: 4px; }
+    .eq-band-top { display: flex; justify-content: space-between; gap: 5px; color: var(--muted); font: 8px "DM Mono", monospace; text-transform: uppercase; }
+    .eq-value { color: var(--accent-bright); font-variant-numeric: tabular-nums; text-transform: none; }
+    .eq-band input { --range-start: 50%; --range-end: 50%; }
+    .eq-range::-webkit-slider-runnable-track { background: linear-gradient(to right,rgba(255,255,255,.13) 0%,rgba(255,255,255,.13) var(--range-start,50%),var(--accent) var(--range-start,50%),var(--accent) var(--range-end,50%),rgba(255,255,255,.13) var(--range-end,50%),rgba(255,255,255,.13) 100%) !important; }
+    .eq-range::-moz-range-track { background: linear-gradient(to right,rgba(255,255,255,.13) 0%,rgba(255,255,255,.13) var(--range-start,50%),var(--accent) var(--range-start,50%),var(--accent) var(--range-end,50%),rgba(255,255,255,.13) var(--range-end,50%),rgba(255,255,255,.13) 100%) !important; }
+    .deck-controls { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 18px; align-items: center; }
+    .now-playing { min-width: 0; }
+    .now-playing-main { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .now-playing-copy { min-width: 0; }
+    .cover-art { position: relative; width: 46px; height: 46px; flex: 0 0 auto; overflow: hidden; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 7px; background: repeating-radial-gradient(circle,#1b1a17 0 2px,#2c2922 2.5px 3px,#181715 3.5px 5px); color: var(--accent); box-shadow: 0 3px 10px rgba(0,0,0,.2); }
+    .cover-art svg { width: 20px; height: 20px; }
+    .cover-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .now-kicker { color: var(--muted); font: 9px "DM Mono", monospace; letter-spacing: .13em; text-transform: uppercase; }
+    .track-title { margin-top: 6px; overflow: hidden; font: 500 16px/1.25 "Playfair Display", Georgia, serif; text-overflow: ellipsis; white-space: nowrap; }
+    .track-artist { margin-top: 4px; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .transport { display: flex; align-items: center; gap: 8px; }
+    .icon-button {
+      display: grid; place-items: center; flex: 0 0 auto; width: 35px; height: 35px;
+      border: 1px solid var(--line); border-radius: 50%; background: rgba(255,255,255,.025);
+      color: var(--muted); cursor: pointer; transition: .2s;
+    }
+    .icon-button:hover:not(:disabled) { color: var(--accent-bright); border-color: rgba(var(--accent-rgb),.46); background: rgba(var(--accent-rgb),.07); }
+    .icon-button:disabled { opacity: .35; cursor: not-allowed; }
+    .icon-button svg { width: 15px; height: 15px; }
+    .play-button { width: 43px; height: 43px; border-color: rgba(var(--accent-rgb),.54); background: linear-gradient(145deg,var(--accent-bright),var(--accent)); color: #282116; box-shadow: 0 3px 16px rgba(var(--accent-rgb),.17); }
+    .play-button:hover:not(:disabled) { color: #1e1a13; background: var(--accent-bright); }
+    .play-button svg { width: 18px; height: 18px; }
+    .timeline { margin-top: 19px; display: grid; grid-template-columns: 35px minmax(0,1fr) 35px; gap: 10px; align-items: center; color: var(--muted); font: 9px "DM Mono", monospace; font-variant-numeric: tabular-nums; }
+    .visualizer { height: 52px; margin-top: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.12); }
+    .visualizer canvas { display: block; width: 100%; height: 100%; }
+    input[type="range"] { width: 100%; height: 14px; margin: 0; appearance: none; background: transparent; cursor: pointer; }
+    input[type="range"]::-webkit-slider-runnable-track { height: 3px; border-radius: 9px; background: linear-gradient(to right,var(--accent) var(--range-progress,0%),rgba(255,255,255,.13) var(--range-progress,0%)); }
+    input[type="range"]::-moz-range-track { height: 3px; border-radius: 9px; background: rgba(255,255,255,.13); }
+    input[type="range"]::-moz-range-progress { height: 3px; border-radius: 9px; background: var(--accent); }
+    input[type="range"]::-webkit-slider-thumb { width: 10px; height: 10px; margin-top: -3.5px; appearance: none; border: 2px solid var(--bg-soft); border-radius: 50%; background: var(--accent-bright); box-shadow: 0 0 0 1px rgba(var(--accent-rgb),.5); }
+    input[type="range"]::-moz-range-thumb { width: 8px; height: 8px; border: 2px solid var(--bg-soft); border-radius: 50%; background: var(--accent-bright); box-shadow: 0 0 0 1px rgba(var(--accent-rgb),.5); }
+    .deck-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--line); }
+    .format-note { display: flex; align-items: center; gap: 7px; color: var(--muted); font: 9px "DM Mono", monospace; letter-spacing: .04em; }
+    .format-note svg { width: 13px; height: 13px; color: var(--accent); }
+    .volume-control { display: flex; align-items: center; gap: 9px; width: 132px; color: var(--muted); }
+    .volume-control svg { width: 15px; height: 15px; flex: 0 0 auto; }
+    .volume-control input { --range-progress: 78%; }
+    .library-card { display: flex; flex-direction: column; overflow: hidden; }
+    .library-header { padding: 22px 21px 16px; border-bottom: 1px solid var(--line); }
+    .library-heading-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .library-title { margin: 0; font: 500 19px "Playfair Display", Georgia, serif; }
+    .track-count { padding: 5px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font: 9px "DM Mono", monospace; white-space: nowrap; }
+    .library-subtitle { margin: 7px 0 0; color: var(--muted); font-size: 10px; }
+    .add-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+    .add-button {
+      min-height: 38px; display: inline-flex; justify-content: center; align-items: center; gap: 7px;
+      border: 1px solid var(--line-strong); border-radius: 8px; background: rgba(255,255,255,.025);
+      color: var(--text); cursor: pointer; font-size: 10px; transition: .2s;
+    }
+    .add-button:hover { border-color: rgba(var(--accent-rgb),.55); background: rgba(var(--accent-rgb),.07); }
+    .add-button.primary { border-color: rgba(var(--accent-rgb),.38); color: var(--accent-bright); background: rgba(var(--accent-rgb),.08); }
+    .add-button svg { width: 14px; height: 14px; color: var(--accent); }
+    .file-input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; clip-path: inset(50%); border: 0; }
+    .playlist-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px 9px; }
+    .playlist-label { color: var(--muted); font: 9px "DM Mono", monospace; letter-spacing: .15em; text-transform: uppercase; }
+    .clear-button { padding: 4px 0 4px 8px; border: 0; background: none; color: var(--quiet); cursor: pointer; font-size: 9px; }
+    .clear-button:hover:not(:disabled) { color: var(--accent-bright); }
+    .clear-button:disabled { cursor: not-allowed; opacity: .4; }
+    .playlist { flex: 1; min-height: 180px; max-height: 313px; overflow-y: auto; padding: 0 8px 10px; scrollbar-color: rgba(var(--accent-rgb),.24) transparent; scrollbar-width: thin; }
+    .empty-state { height: 100%; min-height: 195px; padding: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    .empty-disc { width: 55px; height: 55px; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 50%; background: repeating-radial-gradient(circle,#1e1d1a 0 2px,#292720 2.5px 3px,#1b1a18 3.5px 5px); color: var(--accent); }
+    [data-theme="wisteria"] .empty-disc { background: repeating-radial-gradient(circle,#211c28 0 2px,#30283a 2.5px 3px,#1c1822 3.5px 5px); }
+    .empty-disc svg { width: 18px; height: 18px; filter: drop-shadow(0 0 7px rgba(var(--accent-rgb),.45)); }
+    .empty-title { margin: 13px 0 4px; font: 500 14px "Playfair Display", Georgia, serif; }
+    .empty-description { max-width: 230px; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.65; }
+    .track-row {
+      width: 100%; min-height: 59px; display: grid; grid-template-columns: 34px 28px minmax(0,1fr) 36px; align-items: center; gap: 9px;
+      padding: 7px 10px; border: 1px solid transparent; border-radius: 9px; background: transparent;
+      text-align: left; cursor: pointer; transition: background .2s,border-color .2s;
+    }
+    .track-row:hover { background: rgba(255,255,255,.035); }
+    .track-row.active { border-color: rgba(var(--accent-rgb),.2); background: rgba(var(--accent-rgb),.075); }
+    .track-thumb { position: relative; width: 34px; height: 34px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 5px; background: repeating-radial-gradient(circle,#1b1a17 0 2px,#2c2922 2.5px 3px,#181715 3.5px 5px); }
+    .track-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .track-index { color: var(--quiet); font: 10px "DM Mono", monospace; text-align: center; }
+    .track-row.active .track-index { color: var(--accent); }
+    .track-meta { min-width: 0; }
+    .track-name { display: block; overflow: hidden; color: var(--text); font-size: 11px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+    .track-file { display: block; margin-top: 4px; overflow: hidden; color: var(--muted); font: 9px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
+    .track-duration { color: var(--muted); font: 9px "DM Mono", monospace; text-align: right; }
+    .library-foot { display: flex; align-items: center; gap: 7px; padding: 13px 19px; border-top: 1px solid var(--line); color: var(--muted); font-size: 9px; }
+    .library-foot svg { width: 13px; height: 13px; flex: 0 0 auto; color: var(--accent); }
+    .status-message { min-height: 15px; padding: 3px 20px 8px; color: var(--accent-bright); font-size: 10px; }
+    .status-message:empty { display: none; }
+    .footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 20px; color: var(--quiet); font-size: 9px; }
+    .footer-brand { font: 9px "DM Mono", monospace; letter-spacing: .09em; }
+    .footer-local { display: flex; align-items: center; gap: 7px; }
+    .footer-local::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #a9cb91; box-shadow: 0 0 7px rgba(169,203,145,.55); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    @media (min-width: 1200px) {
+      .studio-grid { grid-template-columns: minmax(0,1.5fr) minmax(350px,.8fr); gap: 26px; }
+      .deck-card { padding: 26px 28px 23px; }
+      .turntable { min-height: 414px; }
+    }
+    @media (max-width: 900px) {
+      .app-shell { padding-right: 28px; padding-left: 28px; }
+      .studio-grid { grid-template-columns: minmax(0,1fr) minmax(290px,.8fr); gap: 15px; }
+      .deck-card { padding: 18px; }
+      .turntable { min-height: 310px; }
+      .library-header { padding-right: 16px; padding-left: 16px; }
+    }
+    @media (max-width: 700px) {
+      .app-shell { padding: 0 17px 25px; }
+      .theme-backdrop { background-position: 58% center; }
+      .topbar { height: 70px; }
+      main { padding-top: 26px; }
+      .intro { margin-bottom: 20px; }
+      .private-note { display: none; }
+      .header-right { gap: 0; }
+      .theme-button { min-height: 36px; padding: 0 10px; font-size: 10px; }
+      .brand { gap: 9px; }
+      .brand-mark { width: 34px; height: 34px; }
+      .brand-name { font-size: 15px; }
+      .brand-caption { font-size: 8px; }
+      .studio-grid { grid-template-columns: minmax(0,1fr); gap: 14px; }
+      .deck-card { padding: 16px; }
+      .turntable { min-height: 0; aspect-ratio: 1.32; margin: 13px 0 15px; }
+      .plinth { width: min(78%, 440px); }
+      .deck-controls { gap: 8px; }
+      .track-title { font-size: 15px; }
+      .transport { gap: 5px; }
+      .icon-button { width: 32px; height: 32px; }
+      .play-button { width: 39px; height: 39px; }
+      .library-card { min-height: 356px; }
+      .playlist { max-height: 270px; }
+      .footer { margin-top: 15px; }
+      .character-art-prompt { margin-top: -5px; }
+    }
+    @media (max-width: 390px) {
+      .app-shell { padding-right: 12px; padding-left: 12px; }
+      .theme-backdrop { background-position: 62% center; }
+      .brand-caption { letter-spacing: .1em; }
+      .deck-card { padding: 13px; }
+      .turntable { aspect-ratio: 1.16; }
+      .plinth { width: 81%; }
+      .deck-controls { grid-template-columns: minmax(0,1fr); }
+      .transport { justify-content: center; }
+      .now-playing { text-align: center; }
+      .deck-footer { gap: 8px; }
+      .format-note { font-size: 8px; }
+      .volume-control { width: 112px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="theme-backdrop" id="themeBackdrop" aria-hidden="true"></div>
+  <svg class="wisteria-atmosphere" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="vineInk" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d7b1ef"/><stop offset=".55" stop-color="#9270b8"/><stop offset="1" stop-color="#6e9b88"/></linearGradient>
+      <linearGradient id="wisteriaPetal" x1="0" y1="0" x2=".2" y2="1"><stop stop-color="#f4dcff" stop-opacity=".92"/><stop offset=".48" stop-color="#c397e0" stop-opacity=".78"/><stop offset="1" stop-color="#8465a8" stop-opacity=".38"/></linearGradient>
+      <linearGradient id="butterflyWing" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f5dfff" stop-opacity=".86"/><stop offset=".55" stop-color="#c28ddd" stop-opacity=".67"/><stop offset="1" stop-color="#8e70b2" stop-opacity=".3"/></linearGradient>
+      <radialGradient id="moonMist"><stop stop-color="#c49be6" stop-opacity=".13"/><stop offset="1" stop-color="#c49be6" stop-opacity="0"/></radialGradient>
+    </defs>
+    <circle cx="1270" cy="270" r="370" fill="url(#moonMist)"/>
+    <circle cx="1270" cy="270" r="185" fill="none" stroke="#e7caf8" stroke-opacity=".055"/>
+    <circle cx="1270" cy="270" r="235" fill="none" stroke="#e7caf8" stroke-opacity=".04"/>
+    <g fill="none" stroke="url(#vineInk)" stroke-width="2.2" stroke-linecap="round" opacity=".55">
+      <path d="M32-30C140 88 54 151 161 238s-7 164 121 245 31 177 133 254"/>
+      <path d="M1540-28c-84 100-26 182-131 266s-13 153-108 242-17 160-99 238"/>
+      <path d="M126 124c-49 19-69 56-71 104m104 68c51-4 84 20 107 58m-14 106c-55 6-81 38-92 82M1453 116c55 12 86 49 96 99m-151 75c-48-6-77 13-102 46m21 111c47 6 72 37 82 75"/>
+    </g>
+    <g fill="url(#wisteriaPetal)" stroke="#f3dfff" stroke-opacity=".26" stroke-width=".7">
+      <g transform="translate(120 218)">
+        <path d="M0 0c-18 17-17 40 0 52 17-12 18-35 0-52Z"/><path d="M-18 13c-23 11-26 31-11 46 20-7 25-25 11-46Z"/><path d="M18 13c23 11 26 31 11 46-20-7-25-25-11-46Z"/><path d="M-7 45c-17 15-13 31 3 38 14-11 13-25-3-38Z"/><path d="M8 45c17 15 13 31-3 38-14-11-13-25 3-38Z"/><circle cy="27" r="3" fill="#fff0ce" stroke="none"/>
+      </g>
+      <g transform="translate(231 371) scale(.84)">
+        <path d="M0 0c-18 17-17 40 0 52 17-12 18-35 0-52Z"/><path d="M-18 13c-23 11-26 31-11 46 20-7 25-25 11-46Z"/><path d="M18 13c23 11 26 31 11 46-20-7-25-25-11-46Z"/><path d="M-7 45c-17 15-13 31 3 38 14-11 13-25-3-38Z"/><path d="M8 45c17 15 13 31-3 38-14-11-13-25-3-38Z"/><circle cy="27" r="3" fill="#fff0ce" stroke="none"/>
+      </g>
+      <g transform="translate(379 607) scale(.92)">
+        <path d="M0 0c-18 17-17 40 0 52 17-12 18-35 0-52Z"/><path d="M-18 13c-23 11-26 31-11 46 20-7 25-25 11-46Z"/><path d="M18 13c23 11 26 31 11 46-20-7-25-25-11-46Z"/><path d="M-7 45c-17 15-13 31 3 38 14-11 13-25-3-38Z"/><path d="M8 45c17 15 13 31-3 38-14-11-13-25-3-38Z"/><circle cy="27" r="3" fill="#fff0ce" stroke="none"/>
+      </g>
+      <g transform="translate(1450 243) scale(.95)">
+        <path d="M0 0c-18 17-17 40 0 52 17-12 18-35 0-52Z"/><path d="M-18 13c-23 11-26 31-11 46 20-7 25-25 11-46Z"/><path d="M18 13c23 11 26 31 11 46-20-7-25-25-11-46Z"/><path d="M-7 45c-17 15-13 31 3 38 14-11 13-25-3-38Z"/><path d="M8 45c17 15 13 31-3 38-14-11-13-25-3-38Z"/><circle cy="27" r="3" fill="#fff0ce" stroke="none"/>
+      </g>
+      <g transform="translate(1305 404) scale(.78)">
+        <path d="M0 0c-18 17-17 40 0 52 17-12 18-35 0-52Z"/><path d="M-18 13c-23 11-26 31-11 46 20-7 25-25 11-46Z"/><path d="M18 13c23 11 26 31 11 46-20-7-25-25-11-46Z"/><path d="M-7 45c-17 15-13 31 3 38 14-11 13-25-3-38Z"/><path d="M8 45c17 15 13 31-3 38-14-11-13-25-3-38Z"/><circle cy="27" r="3" fill="#fff0ce" stroke="none"/>
+      </g>
+    </g>
+    <g fill="none" stroke="#c5e6ce" stroke-width="1.5" opacity=".39">
+      <path d="M96 130c-20-23-42-28-65-19m92 33c20-29 39-38 63-35M1482 145c22-24 45-28 68-21m-102 37c-19-30-38-39-62-37"/>
+      <path d="M90 125c-17-11-27-4-20 12 8 16 21 18 27 4 6 15 19 13 24-2 5-15-5-23-20-14m1380 23c17-11 27-4 20 12-8 16-21 18-27 4-6 15-19 13-24-2-5-15 5-23 20-14"/>
+    </g>
+    <g class="butterfly-flight" transform="translate(1150 285)" fill="url(#butterflyWing)" stroke="#f4e3ff" stroke-opacity=".6" stroke-width="1">
+      <path d="M0 2C-18-45-69-62-76-30c-5 24 20 35 66 38C-47 13-63 44-44 52-24 60-8 33 0 8 8 33 24 60 44 52c19-8 3-39-34-44 46-3 71-14 66-38C69-62 18-45 0 2Z"/>
+      <path d="M0 0v48" fill="none" stroke="#f5e7ff" stroke-width="2"/>
+      <path d="M-2-1C-13-22-21-29-32-33m34 32c11-21 19-28 30-32" fill="none" stroke="#f5e7ff" stroke-width="1"/>
+      <circle cx="-42" cy="-28" r="3" fill="#f4dca9" stroke="none"/><circle cx="42" cy="-28" r="3" fill="#f4dca9" stroke="none"/>
+    </g>
+    <g fill="#f6e4bd">
+      <circle class="firefly" cx="535" cy="230" r="2.2"/><circle class="firefly" cx="1040" cy="590" r="2.5"/><circle class="firefly" cx="1415" cy="690" r="1.8"/>
+    </g>
+  </svg>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Needle and Groove home" style="text-decoration:none;color:inherit">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="12" r="5.2" stroke="currentColor" stroke-width="1"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><path d="M17.8 6.2l2-2m-1 3.4 2-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        </span>
+        <span class="brand-copy"><span class="brand-name">Needle &amp; Groove</span><span class="brand-caption">A little room for records</span></span>
+      </a>
+      <div class="header-right">
+        <span class="private-note"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> Your music stays yours</span>
+        <button class="theme-button" id="themeToggle" type="button" aria-label="Switch to Shinobu's Garden theme" title="Switch theme"><span class="theme-swatch" aria-hidden="true"></span><span id="themeName">Vinyl Room</span><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+    </header>
+
+    <main>
+      <div class="intro">
+        <div class="eyebrow" id="themeEyebrow">The listening room</div>
+        <h1 id="themeHeading">Made for the long way home.</h1>
+        <p class="subtitle" id="themeSubtitle">A softer place to listen to the music you already love.</p>
+      </div>
+      <section class="character-art-prompt" aria-label="Shinobu theme artwork">
+        <span class="character-art-copy"><span class="character-art-title" id="characterArtTitle">Moonlit wisteria garden</span><span class="character-art-note" id="characterArtNote">Wisteria blossoms, butterfly wings, and a calm violet-night mood. No character art is bundled; you can add an image you own or are licensed to use, and it stays in this browser.</span></span>
+        <button class="character-art-button" id="characterArtButton" type="button">Choose artwork</button>
+        <input class="art-file-input" id="characterArtPicker" type="file" accept="image/jpeg,image/png,image/webp,image/avif">
+      </section>
+
+      <div class="studio-grid">
+        <section class="deck-card" id="deck" aria-label="Vinyl turntable and playback controls">
+          <div class="deck-topline">
+            <span class="deck-label">Direct drive · analog soul</span>
+            <span class="power-state" id="powerState"><span class="power-led"></span><span id="powerText">Standby</span></span>
+          </div>
+          <div class="turntable" aria-label="Illustration of a vinyl turntable">
+            <div class="plinth">
+              <div class="platter">
+                <div class="vinyl-label"><div class="label-copy"><span class="label-title" id="labelTitle">SIDE A</span><span class="label-artist" id="labelArtist">NEEDLE &amp; GROOVE</span></div><span class="label-center"></span></div>
+              </div>
+              <div class="tonearm" aria-hidden="true"><span class="tonearm-pivot"></span><span class="tonearm-head"></span></div>
+              <span class="plinth-badge">N &amp; G · 33⅓ RPM</span>
+              <button class="power-button" id="powerButton" type="button" aria-label="Power on and play" title="Power on and play">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v9m5.8-6.1a8 8 0 11-11.6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="deck-controls">
+            <div class="now-playing" aria-live="polite">
+              <div class="now-kicker">Now on the turntable</div>
+              <div class="now-playing-main">
+                <div class="cover-art" id="coverArt" aria-label="Album artwork unavailable"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 3.5v2m8.5 6.5h-2m-6.5 8.5v-2m-8.5-6.5h2" stroke="currentColor" stroke-width="1.1"/></svg><img id="coverImage" alt="" hidden></div>
+                <div class="now-playing-copy"><div class="track-title" id="currentTitle">Nothing playing yet</div><div class="track-artist" id="currentArtist">Choose a record from your collection</div></div>
+              </div>
+            </div>
+            <div class="transport" aria-label="Playback controls">
+              <button class="icon-button" id="previousButton" type="button" aria-label="Previous track" title="Previous track" disabled><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zm13 0v14L9 12z"/></svg></button>
+              <button class="icon-button play-button" id="playButton" type="button" aria-label="Play" title="Play" disabled><svg id="playIcon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5a1 1 0 011.5-.86l10 6.36a1.2 1.2 0 010 2l-10 6.36A1 1 0 018 18.5z"/></svg></button>
+              <button class="icon-button" id="nextButton" type="button" aria-label="Next track" title="Next track" disabled><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM5 5v14l10-7z"/></svg></button>
+            </div>
+          </div>
+          <div class="timeline">
+            <span id="elapsed">0:00</span><input id="seekSlider" type="range" min="0" max="100" value="0" step="0.1" aria-label="Seek through track" disabled><span id="duration">0:00</span>
+          </div>
+          <div class="visualizer" aria-label="Audio visualizer"><canvas id="visualizerCanvas" role="img" aria-label="Waveform visualizer, idle"></canvas></div>
+          <div class="deck-footer">
+            <div class="format-note"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 4.8 6v5.2c0 4.6 3 8.5 7.2 9.8 4.2-1.3 7.2-5.2 7.2-9.8V6L12 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>LOCAL FILES · ALWAYS PRIVATE</div>
+            <label class="volume-control" title="Volume"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10v4h4l5 4V6l-5 4H4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M17 9a5 5 0 010 6m2-9a9 9 0 010 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input id="volumeSlider" type="range" min="0" max="1" value="0.78" step="0.01" aria-label="Volume"></label>
+          </div>
+          <details class="effects-panel">
+          <summary><span class="effects-title"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19V5m0 14h16M8 16V9m4 7V5m4 11v-5m4 5V7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Soundstage &amp; tone</span><span class="effects-hint">Headphones recommended</span></summary>
+          <div class="effects-body">
+            <div class="mode-picker">
+              <label for="spatialMode">Spatial audio mode</label>
+              <select id="spatialMode">
+                <option value="original">Original · spatial bypass</option>
+                <option value="8d">8D · stereo motion</option>
+                <option value="binaural">Binaural · HRTF headphones</option>
+                <option value="orbit">16D · HRTF orbit</option>
+              </select>
+              <p class="mode-description" id="spatialDescription" aria-live="polite">Spatial processing is bypassed; your existing equalizer remains available.</p>
+            </div>
+            <div class="spatial-row">
+              <span class="spatial-copy"><span class="spatial-name">8D stereo motion</span><span class="spatial-note">Slow left-to-right panning, not binaural 3D · headphones recommended</span></span>
+              <label class="switch" aria-label="Enable 8D stereo motion"><input id="spatialToggle" type="checkbox"><span class="switch-track"></span></label>
+            </div>
+            <div class="eq-heading"><span>3-band equalizer</span><button class="eq-reset" id="eqReset" type="button">Reset</button></div>
+            <div class="eq-bands">
+              <label class="eq-band"><span class="eq-band-top"><span>Bass</span><output class="eq-value" id="bassValue">0 dB</output></span><input class="eq-range" id="bassEq" type="range" min="-12" max="12" value="0" step="1" aria-label="Bass equalizer"></label>
+              <label class="eq-band"><span class="eq-band-top"><span>Mid</span><output class="eq-value" id="midValue">0 dB</output></span><input class="eq-range" id="midEq" type="range" min="-12" max="12" value="0" step="1" aria-label="Midrange equalizer"></label>
+              <label class="eq-band"><span class="eq-band-top"><span>Treble</span><output class="eq-value" id="trebleValue">0 dB</output></span><input class="eq-range" id="trebleEq" type="range" min="-12" max="12" value="0" step="1" aria-label="Treble equalizer"></label>
+            </div>
+          </div>
+          </details>
+          <audio id="audio" preload="metadata"></audio>
+        </section>
+
+        <aside class="library-card" aria-label="Your local music library">
+          <div class="library-header">
+            <div class="library-heading-row"><h2 class="library-title">Your collection</h2><span class="track-count" id="trackCount">0 records</span></div>
+            <p class="library-subtitle">Bring your own music. It never leaves this device.</p>
+            <div class="add-actions">
+              <button class="add-button primary" id="browseFiles" type="button"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14m-7-7h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Add music</button>
+              <button class="add-button" id="browseFolder" type="button"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 7.5a2 2 0 012-2h5l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2h-13a2 2 0 01-2-2v-10z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Add a folder</button>
+              <input class="file-input" id="filePicker" type="file" aria-label="Choose audio files" accept="audio/*,.mp3,.m4a,.aac,.ogg,.oga,.opus,.wav,.flac,.aiff,.aif,.wma,.alac" multiple>
+              <input class="file-input" id="folderPicker" type="file" aria-label="Choose a folder of audio files" accept="audio/*,.mp3,.m4a,.aac,.ogg,.oga,.opus,.wav,.flac,.aiff,.aif,.wma,.alac" webkitdirectory directory multiple>
+            </div>
+            <label class="online-art-option"><input id="onlineArtToggle" type="checkbox" checked><span>Find missing cover art online automatically</span><small>If enabled, track title, artist and album may be sent to iTunes; audio files stay on this device.</small></label>
+          </div>
+          <div class="playlist-toolbar"><span class="playlist-label">Side A · playlist</span><button class="clear-button" id="clearButton" type="button" disabled>Clear all</button></div>
+          <div class="playlist" id="playlist" aria-label="Playlist">
+            <div class="empty-state" id="emptyState">
+              <div class="empty-disc" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 3.5v2m8.5 6.5h-2m-6.5 8.5v-2m-8.5-6.5h2" stroke="currentColor" stroke-width="1.1"/></svg></div>
+              <p class="empty-title">A record waiting to be played</p>
+              <p class="empty-description">Add a few songs or choose a music folder to start your listening room.</p>
+            </div>
+          </div>
+          <div class="status-message" id="statusMessage" role="status" aria-live="polite"></div>
+          <div class="library-foot"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 4.8 6v5.2c0 4.6 3 8.5 7.2 9.8 4.2-1.3 7.2-5.2 7.2-9.8V6L12 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Files play right here in your browser. Nothing is uploaded.</div>
+        </aside>
+      </div>
+    </main>
+    <footer class="footer"><span class="footer-brand">NEEDLE &amp; GROOVE · TAKE YOUR TIME</span><span class="footer-local">Offline-ready · Your music stays on your device</span></footer>
+  </div>
+  <script>
+    (() => {
+      "use strict";
+
+      const audio = document.getElementById("audio");
+      const deck = document.getElementById("deck");
+      const filePicker = document.getElementById("filePicker");
+      const folderPicker = document.getElementById("folderPicker");
+      const playlist = document.getElementById("playlist");
+      const emptyState = document.getElementById("emptyState");
+      const playButton = document.getElementById("playButton");
+      const previousButton = document.getElementById("previousButton");
+      const nextButton = document.getElementById("nextButton");
+      const seekSlider = document.getElementById("seekSlider");
+      const volumeSlider = document.getElementById("volumeSlider");
+      const currentTitle = document.getElementById("currentTitle");
+      const currentArtist = document.getElementById("currentArtist");
+      const labelTitle = document.getElementById("labelTitle");
+      const labelArtist = document.getElementById("labelArtist");
+      const statusMessage = document.getElementById("statusMessage");
+      const coverImage = document.getElementById("coverImage");
+      const visualizerCanvas = document.getElementById("visualizerCanvas");
+      const visualizerContext = visualizerCanvas.getContext("2d");
+      const tracks = [];
+      const platter = document.querySelector(".platter");
+      const spinAnimation = platter.animate(
+        [{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }],
+        { duration: 1820, iterations: Infinity, easing: "linear" }
+      );
+      spinAnimation.pause();
+      let currentIndex = -1;
+      let statusTimer;
+      let spinRampFrame = 0;
+      let audioContext = null;
+      let audioSource = null;
+      let audioGraph = null;
+      let currentAudioMode = "original";
+      let orbitTimer = 0;
+      let orbitStartTime = null;
+      let visualizerFrame = 0;
+      let selectionVersion = 0;
+      let currentCoverUrl = "";
+      let themeArtUrl = "";
+      let themeArtLoadVersion = 0;
+      let mediaSessionReady = false;
+      const artworkCache = new Map();
+      const artworkNegativeCache = new Map();
+      const artworkPending = new Map();
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+      function setDeckPowered(powered) {
+        window.cancelAnimationFrame(spinRampFrame);
+        const targetRate = powered ? 1 : 0;
+        const initialRate = spinAnimation.playbackRate;
+        if (powered && spinAnimation.playState !== "running") {
+          if (spinAnimation.playState === "idle") spinAnimation.currentTime = 0;
+          spinAnimation.playbackRate = Math.max(initialRate, 0.001);
+          spinAnimation.play();
+        }
+        const startRate = powered ? Math.max(initialRate, 0.001) : initialRate;
+        const startedAt = performance.now();
+        const rampDuration = 850;
+        function ramp(now) {
+          const progress = Math.min(1, (now - startedAt) / rampDuration);
+          const easedProgress = progress * progress * (3 - 2 * progress);
+          spinAnimation.playbackRate = startRate + (targetRate - startRate) * easedProgress;
+          if (progress < 1) {
+            spinRampFrame = window.requestAnimationFrame(ramp);
+          } else if (!powered) {
+            spinAnimation.pause();
+          }
+        }
+        spinRampFrame = window.requestAnimationFrame(ramp);
+      }
+
+      function applyEqualizer() {
+        [
+          { id: "bassEq", output: "bassValue", node: audioGraph && audioGraph.bass },
+          { id: "midEq", output: "midValue", node: audioGraph && audioGraph.mid },
+          { id: "trebleEq", output: "trebleValue", node: audioGraph && audioGraph.treble }
+        ].forEach(({ id, output, node }) => {
+          const control = document.getElementById(id);
+          const value = Number(control.value);
+          const percent = ((value + 12) / 24) * 100;
+          control.style.setProperty("--range-start", `${Math.min(percent, 50)}%`);
+          control.style.setProperty("--range-end", `${Math.max(percent, 50)}%`);
+          document.getElementById(output).textContent = `${value > 0 ? "+" : ""}${value} dB`;
+          if (node && audioContext) node.gain.setTargetAtTime(value, audioContext.currentTime, 0.04);
+        });
+      }
+
+      function setAudioParam(param, value, timeConstant = 0.04) {
+        if (!param || !audioContext) return;
+        param.setTargetAtTime(value, audioContext.currentTime, timeConstant);
+      }
+
+      function updateOrbitPosition() {
+        if (!audioGraph || !audioContext || !audioGraph.binauralPanners || audioContext.state !== "running") return;
+        const angle = (audioContext.currentTime - orbitStartTime) * Math.PI * 2 * 0.055;
+        const sine = Math.sin(angle);
+        const cosine = Math.cos(angle);
+        const radius = 2;
+        const halfWidth = 0.16;
+        const now = audioContext.currentTime;
+        const positions = [
+          [radius * sine - halfWidth * cosine, -radius * cosine - halfWidth * sine],
+          [radius * sine + halfWidth * cosine, -radius * cosine + halfWidth * sine]
+        ];
+        audioGraph.binauralPanners.forEach((panner, index) => {
+          const [x, z] = positions[index];
+          if (panner.positionX && panner.positionZ) {
+            panner.positionX.setTargetAtTime(x, now, 0.06);
+            panner.positionY.setTargetAtTime(0, now, 0.06);
+            panner.positionZ.setTargetAtTime(z, now, 0.06);
+          } else {
+            panner.setPosition(x, 0, z);
+          }
+        });
+      }
+
+      function startOrbitMotion() {
+        if (currentAudioMode !== "orbit" || audio.paused || orbitTimer) return;
+        if (orbitStartTime === null && audioContext) orbitStartTime = audioContext.currentTime;
+        updateOrbitPosition();
+        orbitTimer = window.setInterval(updateOrbitPosition, 50);
+      }
+
+      function stopOrbitMotion() {
+        if (orbitTimer) window.clearInterval(orbitTimer);
+        orbitTimer = 0;
+      }
+
+      function applySpatialMode(mode) {
+        currentAudioMode = mode;
+        document.getElementById("spatialMode").value = mode;
+        document.getElementById("spatialToggle").checked = mode === "8d";
+        const descriptions = {
+          original: "Spatial processing is bypassed; your existing equalizer remains available.",
+          "8d": "Slow left-to-right stereo panning. This is not HRTF binaural audio or surround sound.",
+          binaural: "Browser HRTF processing virtualizes the stereo channels for headphones; localization varies and front/back placement is not guaranteed.",
+          orbit: "A slow HRTF-processed orbit around the listener. “16D” is a creative effect name, not sixteen channels or true surround; localization varies by headphones and browser."
+        };
+        document.getElementById("spatialDescription").textContent = descriptions[mode];
+        if (mode === "orbit" && orbitStartTime === null && audioContext) orbitStartTime = audioContext.currentTime;
+        if (mode !== "orbit") stopOrbitMotion();
+        if (!audioGraph || !audioContext) return;
+        setAudioParam(audioGraph.originalGain.gain, mode === "original" ? 1 : 0, 0.035);
+        setAudioParam(audioGraph.motionGain.gain, mode === "8d" ? 1 : 0, 0.035);
+        const useHrtf = mode === "binaural" || mode === "orbit";
+        setAudioParam(audioGraph.binauralLeftGain.gain, useHrtf ? 0.5 : 0, 0.035);
+        setAudioParam(audioGraph.binauralRightGain.gain, useHrtf ? 0.5 : 0, 0.035);
+        setAudioParam(audioGraph.panDepth.gain, mode === "8d" ? 0.75 : 0, 0.12);
+        if (mode === "orbit" && !audio.paused) startOrbitMotion();
+        if (!useHrtf && audioGraph.binauralInputConnected) {
+          window.setTimeout(() => {
+            if (currentAudioMode !== "binaural" && currentAudioMode !== "orbit" && audioGraph && audioGraph.binauralInputConnected) {
+              audioGraph.binauralInput.disconnect(audioGraph.binauralSplitter);
+              audioGraph.binauralInputConnected = false;
+            }
+          }, 180);
+        }
+      }
+
+      function connectBinauralPath() {
+        if (!audioGraph || !audioContext || typeof audioContext.createPanner !== "function") return false;
+        if (audioGraph.binauralConnected) {
+          if (!audioGraph.binauralInputConnected) {
+            audioGraph.binauralInput.connect(audioGraph.binauralSplitter);
+            audioGraph.binauralInputConnected = true;
+          }
+          return true;
+        }
+        try {
+          const leftPanner = audioContext.createPanner();
+          const rightPanner = audioContext.createPanner();
+          [leftPanner, rightPanner].forEach(panner => {
+            panner.panningModel = "HRTF";
+            if (panner.panningModel !== "HRTF") throw new Error("HRTF panning is unavailable");
+            panner.distanceModel = "linear";
+            panner.refDistance = 1;
+            panner.maxDistance = 100;
+            panner.rolloffFactor = 0;
+          });
+          if (leftPanner.positionX && rightPanner.positionX) {
+            leftPanner.positionX.value = -0.38;
+            leftPanner.positionY.value = 0;
+            leftPanner.positionZ.value = -1;
+            rightPanner.positionX.value = 0.38;
+            rightPanner.positionY.value = 0;
+            rightPanner.positionZ.value = -1;
+          } else {
+            leftPanner.setPosition(-0.38, 0, -1);
+            rightPanner.setPosition(0.38, 0, -1);
+          }
+          audioGraph.binauralInput = audioContext.createStereoPanner();
+          audioGraph.binauralSplitter = audioContext.createChannelSplitter(2);
+          audioGraph.treble.connect(audioGraph.binauralInput);
+          audioGraph.binauralInput.connect(audioGraph.binauralSplitter);
+          audioGraph.binauralSplitter.connect(leftPanner, 0);
+          audioGraph.binauralSplitter.connect(rightPanner, 1);
+          leftPanner.connect(audioGraph.binauralLeftGain).connect(audioGraph.modeBus);
+          rightPanner.connect(audioGraph.binauralRightGain).connect(audioGraph.modeBus);
+          audioGraph.binauralPanners = [leftPanner, rightPanner];
+          audioGraph.binauralConnected = true;
+          audioGraph.binauralInputConnected = true;
+          return true;
+        } catch (error) {
+          console.warn("Native HRTF binaural processing is unavailable:", error);
+          if (audioGraph.binauralInput) audioGraph.binauralInput.disconnect();
+          return false;
+        }
+      }
+
+      async function prepareAudioGraph() {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) {
+          showStatus("Audio effects are not supported in this browser; standard playback is still available.");
+          return false;
+        }
+        if (!audioGraph) {
+          if (!audioContext) audioContext = new AudioContextClass();
+          if (!audioSource) audioSource = audioContext.createMediaElementSource(audio);
+          const bass = audioContext.createBiquadFilter();
+          bass.type = "lowshelf";
+          bass.frequency.value = 180;
+          const mid = audioContext.createBiquadFilter();
+          mid.type = "peaking";
+          mid.frequency.value = 1000;
+          mid.Q.value = 0.8;
+          const treble = audioContext.createBiquadFilter();
+          treble.type = "highshelf";
+          treble.frequency.value = 4000;
+          const panner = audioContext.createStereoPanner();
+          const panDepth = audioContext.createGain();
+          panDepth.gain.value = 0;
+          const panOscillator = audioContext.createOscillator();
+          panOscillator.type = "sine";
+          panOscillator.frequency.value = 0.09;
+          const originalGain = audioContext.createGain();
+          const motionGain = audioContext.createGain();
+          const binauralLeftGain = audioContext.createGain();
+          const binauralRightGain = audioContext.createGain();
+          const modeBus = audioContext.createGain();
+          originalGain.gain.value = 1;
+          motionGain.gain.value = 0;
+          binauralLeftGain.gain.value = 0;
+          binauralRightGain.gain.value = 0;
+          const compressor = audioContext.createDynamicsCompressor();
+          compressor.threshold.value = -8;
+          compressor.knee.value = 10;
+          compressor.ratio.value = 3;
+          compressor.attack.value = 0.006;
+          compressor.release.value = 0.22;
+          const analyser = audioContext.createAnalyser();
+          analyser.fftSize = 1024;
+          analyser.smoothingTimeConstant = 0.82;
+          audioSource.connect(bass).connect(mid).connect(treble);
+          treble.connect(originalGain).connect(modeBus);
+          treble.connect(panner).connect(motionGain).connect(modeBus);
+          modeBus.connect(compressor).connect(analyser).connect(audioContext.destination);
+          panOscillator.connect(panDepth).connect(panner.pan);
+          panOscillator.start();
+          audioGraph = {
+            bass, mid, treble, panner, panDepth, analyser, compressor,
+            originalGain, motionGain, binauralLeftGain, binauralRightGain,
+            modeBus, binauralConnected: false, binauralInputConnected: false,
+            binauralInput: null, binauralSplitter: null, binauralPanners: null
+          };
+          applyEqualizer();
+          if ((currentAudioMode === "binaural" || currentAudioMode === "orbit") && !connectBinauralPath()) {
+            showStatus("Binaural HRTF mode is not supported here; using Original audio instead.");
+            applySpatialMode("original");
+          } else {
+            applySpatialMode(currentAudioMode);
+          }
+        }
+        if (audioContext.state === "suspended") await audioContext.resume();
+        return true;
+      }
+
+      async function requestSpatialMode(mode) {
+        if (mode === "original") {
+          if (audioContext && audioContext.state === "suspended") {
+            try {
+              await audioContext.resume();
+            } catch (error) {
+              showStatus("The browser suspended audio; press Play to resume it.");
+              console.warn("AudioContext resume while selecting Original failed:", error);
+            }
+          }
+          applySpatialMode(mode);
+          return;
+        }
+        try {
+          const ready = await prepareAudioGraph();
+          if (!ready) {
+            applySpatialMode("original");
+            return;
+          }
+          if ((mode === "binaural" || mode === "orbit") && !connectBinauralPath()) {
+            showStatus("Native HRTF spatial audio is unavailable in this browser; Original audio is active.");
+            applySpatialMode("original");
+            return;
+          }
+          if (mode === "orbit") orbitStartTime = audioContext.currentTime;
+          applySpatialMode(mode);
+        } catch (error) {
+          showStatus("That spatial audio mode could not start; Original audio is active.");
+          console.error("Spatial audio mode could not start:", error);
+          applySpatialMode("original");
+        }
+      }
+
+      function drawVisualizer() {
+        const rect = visualizerCanvas.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        const width = Math.round(rect.width * pixelRatio);
+        const height = Math.round(rect.height * pixelRatio);
+        if (visualizerCanvas.width !== width || visualizerCanvas.height !== height) {
+          visualizerCanvas.width = width;
+          visualizerCanvas.height = height;
+        }
+        visualizerContext.clearRect(0, 0, width, height);
+        visualizerContext.beginPath();
+        visualizerContext.lineWidth = Math.max(1, pixelRatio);
+        visualizerContext.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#d7b77b";
+        const waveform = audioGraph ? new Uint8Array(audioGraph.analyser.fftSize) : null;
+        if (waveform && !audio.paused) audioGraph.analyser.getByteTimeDomainData(waveform);
+        const middle = height / 2;
+        if (!waveform || audio.paused) {
+          visualizerContext.moveTo(0, middle);
+          visualizerContext.lineTo(width, middle);
+        } else {
+          for (let i = 0; i < waveform.length; i++) {
+            const x = (i / (waveform.length - 1)) * width;
+            const y = (waveform[i] / 255) * height;
+            if (i === 0) visualizerContext.moveTo(x, y);
+            else visualizerContext.lineTo(x, y);
+          }
+        }
+        visualizerContext.stroke();
+        visualizerCanvas.setAttribute("aria-label", !audioGraph ? "Waveform visualizer unavailable in this browser" : audio.paused ? "Waveform visualizer, idle" : "Waveform visualizer, showing live audio");
+        if (!audio.paused && !document.hidden && !reducedMotion.matches) {
+          visualizerFrame = window.requestAnimationFrame(drawVisualizer);
+        }
+      }
+
+      function stopVisualizer() {
+        window.cancelAnimationFrame(visualizerFrame);
+        visualizerFrame = 0;
+        drawVisualizer();
+      }
+
+      function startVisualizer() {
+        window.cancelAnimationFrame(visualizerFrame);
+        visualizerFrame = 0;
+        drawVisualizer();
+      }
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) stopVisualizer();
+        else {
+          if (!audio.paused) startVisualizer();
+          if (!audio.paused && audioContext && audioContext.state === "suspended") {
+            audioContext.resume().catch(error => {
+              showStatus("Audio is paused by the browser; use Play to resume listening.");
+              console.warn("AudioContext resume after visibility change failed:", error);
+            });
+          }
+        }
+      });
+      window.addEventListener("resize", () => {
+        if (!visualizerFrame) drawVisualizer();
+      });
+      reducedMotion.addEventListener("change", () => {
+        if (audio.paused) stopVisualizer();
+        else startVisualizer();
+      });
+      function readU32(bytes, offset, littleEndian = false) {
+        if (offset < 0 || offset + 4 > bytes.length) return 0;
+        return littleEndian
+          ? bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)
+          : ((bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
+      }
+
+      function readSynchsafe(bytes, offset) {
+        return (bytes[offset] & 0x7f) * 0x200000 + (bytes[offset + 1] & 0x7f) * 0x4000 +
+          (bytes[offset + 2] & 0x7f) * 0x80 + (bytes[offset + 3] & 0x7f);
+      }
+
+      function decodeText(bytes, encoding = "utf-8") {
+        try {
+          return new TextDecoder(encoding).decode(bytes).replace(/\0+$/g, "").trim();
+        } catch {
+          return new TextDecoder("utf-8").decode(bytes).replace(/\0+$/g, "").trim();
+        }
+      }
+
+      function decodeId3Text(data) {
+        if (!data.length) return "";
+        const encodings = ["iso-8859-1", "utf-16", "utf-16be", "utf-8"];
+        return decodeText(data.subarray(1), encodings[data[0]] || "utf-8").split("\0")[0].trim();
+      }
+
+      function findTextTerminator(bytes, start, encoding) {
+        const step = encoding === 1 || encoding === 2 ? 2 : 1;
+        for (let i = start; i + step <= bytes.length; i += step) {
+          if (bytes[i] === 0 && (step === 1 || bytes[i + 1] === 0)) return i;
+        }
+        return bytes.length;
+      }
+
+      function parseId3Picture(data, frameVersion) {
+        if (data.length < 5) return null;
+        const encoding = data[0];
+        let mime;
+        let cursor;
+        if (frameVersion === 2) {
+          const imageFormat = decodeText(data.subarray(1, 4), "iso-8859-1").toLowerCase();
+          mime = imageFormat === "png" ? "image/png" : "image/jpeg";
+          cursor = 4;
+        } else {
+          const mimeEnd = data.indexOf(0, 1);
+          if (mimeEnd < 0 || mimeEnd + 2 >= data.length) return null;
+          mime = decodeText(data.subarray(1, mimeEnd), "iso-8859-1");
+          cursor = mimeEnd + 2;
+        }
+        const descriptionEnd = findTextTerminator(data, cursor, encoding);
+        cursor = Math.min(data.length, descriptionEnd + (encoding === 1 || encoding === 2 ? 2 : 1));
+        if (cursor >= data.length) return null;
+        const allowedMime = /^image\/(jpeg|png|gif|webp)$/i.test(mime) ? mime : "image/jpeg";
+        return { bytes: data.slice(cursor), mime: allowedMime };
+      }
+
+      function parseId3(bytes) {
+        if (bytes.length < 10 || decodeText(bytes.subarray(0, 3), "iso-8859-1") !== "ID3") return {};
+        const version = bytes[3];
+        if (version < 2 || version > 4) return {};
+        const end = Math.min(bytes.length, 10 + readSynchsafe(bytes, 6));
+        let cursor = 10;
+        if (bytes[5] & 0x40 && version === 3 && cursor + 4 <= end) cursor += 4 + readU32(bytes, cursor);
+        const fields = {};
+        while (cursor + (version === 2 ? 6 : 10) <= end) {
+          const headerSize = version === 2 ? 6 : 10;
+          const frameId = decodeText(bytes.subarray(cursor, cursor + (version === 2 ? 3 : 4)), "iso-8859-1");
+          if (!frameId || /^\0+$/.test(frameId)) break;
+          const frameSize = version === 2
+            ? (bytes[cursor + 3] << 16) | (bytes[cursor + 4] << 8) | bytes[cursor + 5]
+            : version === 4 ? readSynchsafe(bytes, cursor + 4) : readU32(bytes, cursor + 4);
+          if (!frameSize || cursor + headerSize + frameSize > end) break;
+          const data = bytes.subarray(cursor + headerSize, cursor + headerSize + frameSize);
+          const mapped = { TIT2: "title", TT2: "title", TPE1: "artist", TP1: "artist", TALB: "album", TAL: "album" }[frameId];
+          if (mapped && !fields[mapped]) fields[mapped] = decodeId3Text(data);
+          if ((frameId === "APIC" || frameId === "PIC") && !fields.picture) fields.picture = parseId3Picture(data, version === 2 ? 2 : 3);
+          cursor += headerSize + frameSize;
+        }
+        return fields;
+      }
+
+      function parseVorbisComments(bytes, start, littleEndian = true) {
+        let cursor = start;
+        if (cursor + 4 > bytes.length) return {};
+        const vendorLength = readU32(bytes, cursor, littleEndian);
+        cursor += 4 + vendorLength;
+        if (cursor + 4 > bytes.length) return {};
+        const count = Math.min(readU32(bytes, cursor, littleEndian), 1000);
+        cursor += 4;
+        const fields = {};
+        for (let i = 0; i < count && cursor + 4 <= bytes.length; i++) {
+          const length = readU32(bytes, cursor, littleEndian);
+          cursor += 4;
+          if (length > bytes.length - cursor) break;
+          const entry = decodeText(bytes.subarray(cursor, cursor + length));
+          cursor += length;
+          const separator = entry.indexOf("=");
+          if (separator < 1) continue;
+          const key = entry.slice(0, separator).toUpperCase();
+          const value = entry.slice(separator + 1);
+          if ((key === "TITLE" || key === "ARTIST" || key === "ALBUM") && value) fields[key.toLowerCase()] = value;
+          if (key === "COVERARTMIME" && value) fields.coverArtMime = value;
+          if (key === "METADATA_BLOCK_PICTURE" && !fields.picture) {
+            try {
+              const pictureBytes = Uint8Array.from(atob(value), char => char.charCodeAt(0));
+              fields.picture = parseFlacPicture(pictureBytes);
+            } catch (error) {
+              console.warn("Could not decode embedded Vorbis cover art:", error);
+            }
+          } else if (key === "COVERART" && !fields.picture) {
+            try {
+              fields.picture = { bytes: Uint8Array.from(atob(value), char => char.charCodeAt(0)), mime: fields.coverArtMime || "image/jpeg" };
+            } catch (error) {
+              console.warn("Could not decode embedded Vorbis cover art:", error);
+            }
+          }
+        }
+        return fields;
+      }
+
+      function parseFlacPicture(bytes) {
+        let cursor = 4;
+        if (cursor + 4 > bytes.length) return null;
+        const mimeLength = readU32(bytes, cursor); cursor += 4;
+        if (mimeLength > bytes.length - cursor) return null;
+        const mime = decodeText(bytes.subarray(cursor, cursor + mimeLength)); cursor += mimeLength;
+        if (cursor + 4 > bytes.length) return null;
+        const descriptionLength = readU32(bytes, cursor); cursor += 4 + descriptionLength;
+        if (cursor + 20 > bytes.length) return null;
+        cursor += 16;
+        const imageLength = readU32(bytes, cursor); cursor += 4;
+        if (!imageLength || imageLength > bytes.length - cursor) return null;
+        return { bytes: bytes.slice(cursor, cursor + imageLength), mime: /^image\/(jpeg|png|gif|webp)$/i.test(mime) ? mime : "image/jpeg" };
+      }
+
+      function parseFlac(bytes) {
+        if (bytes.length < 8 || decodeText(bytes.subarray(0, 4), "iso-8859-1") !== "fLaC") return {};
+        const fields = {};
+        let cursor = 4;
+        while (cursor + 4 <= bytes.length) {
+          const header = bytes[cursor];
+          const type = header & 0x7f;
+          const size = (bytes[cursor + 1] << 16) | (bytes[cursor + 2] << 8) | bytes[cursor + 3];
+          cursor += 4;
+          if (size > bytes.length - cursor) break;
+          const block = bytes.subarray(cursor, cursor + size);
+          if (type === 4) Object.assign(fields, parseVorbisComments(block, 0));
+          if (type === 6 && !fields.picture) fields.picture = parseFlacPicture(block);
+          cursor += size;
+          if (header & 0x80) break;
+        }
+        return fields;
+      }
+
+      function parseOgg(bytes) {
+        const sample = decodeText(bytes, "iso-8859-1");
+        let marker = sample.indexOf("\x03vorbis");
+        let markerLength = 7;
+        if (marker < 0) {
+          marker = sample.indexOf("OpusTags");
+          markerLength = 8;
+        }
+        return marker < 0 ? {} : parseVorbisComments(bytes, marker + markerLength);
+      }
+
+      function parseMp4(bytes) {
+        const text = decodeText(bytes, "iso-8859-1");
+        const fields = {};
+        const keys = [
+          ["\u00a9nam", "title"], ["\u00a9ART", "artist"], ["aART", "artist"], ["\u00a9alb", "album"]
+        ];
+        keys.forEach(([key, field]) => {
+          const keyIndex = text.indexOf(key);
+          if (keyIndex < 0 || fields[field]) return;
+          const dataIndex = text.indexOf("data", keyIndex + 4);
+          if (dataIndex < 0 || dataIndex + 12 > bytes.length) return;
+          const length = readU32(bytes, dataIndex - 4);
+          const valueStart = dataIndex + 12;
+          const valueEnd = Math.min(bytes.length, dataIndex - 4 + length);
+          if (valueEnd > valueStart) fields[field] = decodeText(bytes.subarray(valueStart, valueEnd), "utf-8");
+        });
+        const coverIndex = text.indexOf("covr");
+        if (coverIndex >= 0) {
+          const dataIndex = text.indexOf("data", coverIndex + 4);
+          if (dataIndex >= 0 && dataIndex + 12 <= bytes.length) {
+            const length = readU32(bytes, dataIndex - 4);
+            const kind = readU32(bytes, dataIndex + 4);
+            const start = dataIndex + 12;
+            const end = Math.min(bytes.length, dataIndex - 4 + length);
+            if (end > start) fields.picture = { bytes: bytes.slice(start, end), mime: kind === 14 ? "image/png" : "image/jpeg" };
+          }
+        }
+        return fields;
+      }
+
+      async function readFileWindow(file, limit, fromEnd = false) {
+        const start = fromEnd ? Math.max(0, file.size - limit) : 0;
+        return new Uint8Array(await file.slice(start, Math.min(file.size, start + limit)).arrayBuffer());
+      }
+
+      async function extractEmbeddedMetadata(file) {
+        const extension = file.name.split(".").pop().toLowerCase();
+        if (extension === "mp3") return parseId3(await readFileWindow(file, 12 * 1024 * 1024));
+        if (extension === "flac") return parseFlac(await readFileWindow(file, 20 * 1024 * 1024));
+        if (["ogg", "oga", "opus"].includes(extension)) return parseOgg(await readFileWindow(file, 8 * 1024 * 1024));
+        if (["m4a", "mp4", "aac"].includes(extension)) {
+          const headLimit = 4 * 1024 * 1024;
+          const tailLimit = 12 * 1024 * 1024;
+          const head = await readFileWindow(file, file.size <= tailLimit ? tailLimit : headLimit);
+          const tail = file.size > tailLimit ? await readFileWindow(file, tailLimit, true) : new Uint8Array();
+          const bytes = new Uint8Array(head.length + tail.length);
+          bytes.set(head);
+          bytes.set(tail, head.length);
+          return parseMp4(bytes);
+        }
+        return {};
+      }
+
+      function normalizeSearchText(value) {
+        return value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+      }
+
+      function tokenSimilarity(first, second) {
+        if (!first || !second) return 0;
+        if (first === second) return 1;
+        const firstTokens = new Set(first.split(" "));
+        const secondTokens = new Set(second.split(" "));
+        const common = [...firstTokens].filter(token => secondTokens.has(token)).length;
+        return common / Math.max(firstTokens.size, secondTokens.size);
+      }
+
+      function readStoredArtwork(cacheKey) {
+        let cache;
+        try {
+          cache = JSON.parse(localStorage.getItem("needle-groove-artwork-cache") || "{}");
+        } catch (error) {
+          console.warn("Cached online artwork could not be read:", error);
+          return undefined;
+        }
+        const entry = cache[cacheKey];
+        if (!entry) return undefined;
+        if (!Number.isFinite(entry.expiresAt) || entry.expiresAt <= Date.now()) {
+          delete cache[cacheKey];
+          try {
+            localStorage.setItem("needle-groove-artwork-cache", JSON.stringify(cache));
+          } catch (error) {
+            console.warn("Expired artwork cache entry could not be removed:", error);
+          }
+          return undefined;
+        }
+        return typeof entry.url === "string" ? entry.url : "";
+      }
+
+      function storeArtworkResult(cacheKey, url) {
+        let cache = {};
+        try {
+          cache = JSON.parse(localStorage.getItem("needle-groove-artwork-cache") || "{}");
+          if (!cache || typeof cache !== "object" || Array.isArray(cache)) cache = {};
+        } catch (error) {
+          console.warn("Existing online artwork cache was invalid:", error);
+        }
+        cache[cacheKey] = {
+          url,
+          expiresAt: Date.now() + (url ? 30 * 24 * 60 * 60 * 1000 : 5 * 60 * 1000)
+        };
+        const oldestFirst = Object.entries(cache).sort((a, b) => a[1].expiresAt - b[1].expiresAt);
+        while (oldestFirst.length > 100) delete cache[oldestFirst.shift()[0]];
+        try {
+          localStorage.setItem("needle-groove-artwork-cache", JSON.stringify(cache));
+        } catch (error) {
+          console.warn("Online artwork result could not be cached:", error);
+        }
+      }
+
+      function artworkSearchCacheKey(track) {
+        return normalizeSearchText(`${track.title}|${track.artist}|${track.album}`);
+      }
+
+      async function storeCachedOnlineArtwork(cacheKey, imageUrl) {
+        const response = await fetch(imageUrl);
+        if (!response.ok) throw new Error(`Artwork image returned HTTP ${response.status}`);
+        const blob = await response.blob();
+        if (!blob.type.startsWith("image/") || blob.size > 5 * 1024 * 1024) {
+          throw new Error("Artwork image was not a supported image or exceeded the 5 MB cache limit");
+        }
+        const database = await openThemeArtworkDatabase();
+        try {
+          await new Promise((resolve, reject) => {
+            const transaction = database.transaction("artwork", "readwrite");
+            const store = transaction.objectStore("artwork");
+            const now = Date.now();
+            const entries = [];
+            store.put({ blob, cachedAt: now, expiresAt: now + 30 * 24 * 60 * 60 * 1000 }, `online:${cacheKey}`);
+            const cursorRequest = store.openCursor();
+            cursorRequest.onsuccess = () => {
+              const cursor = cursorRequest.result;
+              if (!cursor) {
+                entries.sort((a, b) => a.cachedAt - b.cachedAt);
+                entries.slice(0, Math.max(0, entries.length - 100)).forEach(entry => store.delete(entry.key));
+                return;
+              }
+              if (String(cursor.key).startsWith("online:")) {
+                const entry = cursor.value;
+                if (!entry || !entry.blob || !Number.isFinite(entry.expiresAt) || entry.expiresAt <= now) {
+                  cursor.delete();
+                } else {
+                  entries.push({ key: cursor.key, cachedAt: Number.isFinite(entry.cachedAt) ? entry.cachedAt : 0 });
+                }
+              }
+              cursor.continue();
+            };
+            cursorRequest.onerror = () => reject(cursorRequest.error || new Error("Could not list cached artwork"));
+            transaction.oncomplete = resolve;
+            transaction.onerror = () => reject(transaction.error || new Error("Could not cache artwork image"));
+            transaction.onabort = () => reject(transaction.error || new Error("Caching artwork image was aborted"));
+          });
+        } finally {
+          database.close();
+        }
+      }
+
+      async function readCachedOnlineArtwork(cacheKey) {
+        const database = await openThemeArtworkDatabase();
+        try {
+          return await new Promise((resolve, reject) => {
+            const transaction = database.transaction("artwork", "readwrite");
+            const store = transaction.objectStore("artwork");
+            const request = store.get(`online:${cacheKey}`);
+            let blob = null;
+            request.onsuccess = () => {
+              const entry = request.result;
+              if (!entry || !entry.blob || !Number.isFinite(entry.expiresAt) || entry.expiresAt <= Date.now()) {
+                if (entry) store.delete(`online:${cacheKey}`);
+              } else {
+                blob = entry.blob;
+              }
+            };
+            request.onerror = () => reject(request.error || new Error("Could not read cached artwork image"));
+            transaction.oncomplete = () => resolve(blob);
+            transaction.onerror = () => reject(transaction.error || new Error("Could not read cached artwork image"));
+            transaction.onabort = () => reject(transaction.error || new Error("Reading cached artwork image was aborted"));
+          });
+        } finally {
+          database.close();
+        }
+      }
+
+      function scoreArtworkMatch(track, result) {
+        const trackTitle = normalizeSearchText(track.title);
+        const candidateTitle = normalizeSearchText(result.trackName || "");
+        if (!trackTitle || !candidateTitle) return 0;
+        const titleScore = tokenSimilarity(trackTitle, candidateTitle);
+        if (titleScore < 0.55) return 0;
+        let score = titleScore * 0.65;
+        let weight = 0.65;
+        const trackArtist = normalizeSearchText(track.artist || "");
+        const candidateArtist = normalizeSearchText(result.artistName || "");
+        if (trackArtist) {
+          if (!candidateArtist) return 0;
+          const artistScore = tokenSimilarity(trackArtist, candidateArtist);
+          if (artistScore < 0.5) return 0;
+          score += artistScore * 0.25;
+          weight += 0.25;
+        }
+        const trackAlbum = normalizeSearchText(track.album || "");
+        const candidateAlbum = normalizeSearchText(result.collectionName || "");
+        if (trackAlbum && candidateAlbum) {
+          score += tokenSimilarity(trackAlbum, candidateAlbum) * 0.1;
+          weight += 0.1;
+        }
+        return score / weight;
+      }
+
+      async function lookupOnlineArtwork(track) {
+        if (!document.getElementById("onlineArtToggle").checked) return "";
+        const cacheKey = artworkSearchCacheKey(track);
+        if (artworkCache.has(cacheKey)) return artworkCache.get(cacheKey);
+        if (artworkPending.has(cacheKey)) return artworkPending.get(cacheKey);
+        const storedArtwork = readStoredArtwork(cacheKey);
+        if (storedArtwork !== undefined) {
+          if (storedArtwork) artworkCache.set(cacheKey, storedArtwork);
+          else artworkNegativeCache.set(cacheKey, Date.now());
+          return storedArtwork;
+        }
+        const negativeCache = artworkNegativeCache.get(cacheKey);
+        if (negativeCache && Date.now() - negativeCache < 5 * 60 * 1000) return "";
+        if (negativeCache) artworkNegativeCache.delete(cacheKey);
+        if (!navigator.onLine) return "";
+        if (!track.title) {
+          artworkNegativeCache.set(cacheKey, Date.now());
+          storeArtworkResult(cacheKey, "");
+          return "";
+        }
+        const term = [track.title, track.artist || track.album].filter(Boolean).join(" ");
+        const request = (async () => {
+          const controller = new AbortController();
+          const timeout = window.setTimeout(() => controller.abort(), 5000);
+          try {
+            const endpoint = new URL("https://itunes.apple.com/search");
+            endpoint.searchParams.set("term", term);
+            endpoint.searchParams.set("entity", "song");
+            endpoint.searchParams.set("limit", "25");
+            const response = await fetch(endpoint, { signal: controller.signal });
+            if (!response.ok) throw new Error(`iTunes returned HTTP ${response.status}`);
+            const payload = await response.json();
+            const candidates = (Array.isArray(payload.results) ? payload.results : [])
+              .map(result => ({ result, score: scoreArtworkMatch(track, result) }))
+              .filter(candidate => candidate.score >= 0.78)
+              .sort((a, b) => b.score - a.score);
+            const match = candidates[0];
+            const ambiguous = match && candidates[1] && match.score - candidates[1].score < 0.04;
+            const artwork = match && !ambiguous && match.result.artworkUrl100
+              ? match.result.artworkUrl100.replace(/\/100x100bb(?=\.)/, "/300x300bb")
+              : "";
+            if (artwork) {
+              artworkCache.set(cacheKey, artwork);
+              storeCachedOnlineArtwork(cacheKey, artwork).catch(error => {
+                console.warn("Online cover art could not be saved for offline use:", error);
+              });
+            }
+            else artworkNegativeCache.set(cacheKey, Date.now());
+            storeArtworkResult(cacheKey, artwork);
+            return artwork;
+          } catch (error) {
+            console.warn("Online cover-art lookup unavailable:", error);
+            artworkNegativeCache.set(cacheKey, Date.now());
+            storeArtworkResult(cacheKey, "");
+            return "";
+          } finally {
+            window.clearTimeout(timeout);
+          }
+        })();
+        artworkPending.set(cacheKey, request);
+        try {
+          return await request;
+        } finally {
+          artworkPending.delete(cacheKey);
+        }
+      }
+
+      function setCoverArtwork(url, track) {
+        currentCoverUrl = url || "";
+        coverImage.hidden = !url;
+        coverImage.onerror = async () => {
+          if (tracks[currentIndex] !== track || currentCoverUrl !== url) return;
+          coverImage.hidden = true;
+          coverImage.removeAttribute("src");
+          document.getElementById("coverArt").setAttribute("aria-label", "Album artwork unavailable");
+          if (track && track.coverUrl === url) {
+            URL.revokeObjectURL(track.coverUrl);
+            track.coverUrl = "";
+            track.onlineCoverUrl = await lookupOnlineArtwork(track);
+            if (tracks[currentIndex] === track && track.onlineCoverUrl) {
+              updateCurrentTrack(track, selectionVersion);
+              renderPlaylist();
+            }
+          }
+        };
+        if (url) {
+          coverImage.src = url;
+          coverImage.alt = `Album artwork for ${track ? track.title : "selected track"}`;
+          document.getElementById("coverArt").setAttribute("aria-label", `Album artwork for ${track ? track.title : "selected track"}`);
+        } else {
+          coverImage.removeAttribute("src");
+          coverImage.alt = "";
+          document.getElementById("coverArt").setAttribute("aria-label", "Album artwork unavailable");
+        }
+        if ("mediaSession" in navigator && "MediaMetadata" in window && track) {
+          const artwork = url ? [{ src: url, sizes: "300x300", type: track.coverMime || "image/jpeg" }] : [];
+          navigator.mediaSession.metadata = new MediaMetadata({ title: track.title, artist: track.artist || "Unknown artist", album: track.album || "Needle & Groove", artwork });
+        }
+      }
+
+      function updateCurrentTrack(track, version) {
+        if (version !== selectionVersion || tracks[currentIndex] !== track) return;
+        currentTitle.textContent = track.title;
+        currentArtist.textContent = [track.artist || track.file.name, track.album].filter(Boolean).join(" · ");
+        labelTitle.textContent = track.title;
+        labelArtist.textContent = (track.artist || "NEEDLE & GROOVE").toUpperCase();
+        setCoverArtwork(track.coverUrl || track.onlineCoverUrl || "", track);
+        if ("mediaSession" in navigator && !mediaSessionReady) {
+          const actions = {
+            play: () => togglePlayback(),
+            pause: () => audio.pause(),
+            previoustrack: () => moveTrack(-1),
+            nexttrack: () => moveTrack(1),
+            seekbackward: details => { audio.currentTime = Math.max(0, audio.currentTime - (details.seekOffset || 10)); },
+            seekforward: details => { audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + (details.seekOffset || 10)); },
+            seekto: details => { if (Number.isFinite(details.seekTime)) audio.currentTime = details.seekTime; }
+          };
+          Object.entries(actions).forEach(([action, handler]) => {
+            try { navigator.mediaSession.setActionHandler(action, handler); }
+            catch (error) { console.warn(`Media session action "${action}" is unavailable:`, error); }
+          });
+          mediaSessionReady = true;
+        }
+      }
+
+      async function loadTrackMetadata(track) {
+        try {
+          const metadata = await extractEmbeddedMetadata(track.file);
+          if (metadata.title) track.title = metadata.title;
+          if (metadata.artist) track.artist = metadata.artist;
+          if (metadata.album) track.album = metadata.album;
+          if (!metadata.artist) {
+            const fileTitle = track.file.name.replace(/\.[^.]+$/, "");
+            const splitName = fileTitle.match(/^\s*(.+?)\s+-\s+(.+)\s*$/);
+            if (splitName) {
+              track.artist = splitName[1].trim();
+              if (!metadata.title) track.title = splitName[2].trim();
+            }
+          }
+          if (metadata.picture && metadata.picture.bytes && metadata.picture.bytes.length) {
+            const blob = new Blob([metadata.picture.bytes], { type: metadata.picture.mime || "image/jpeg" });
+            track.coverUrl = URL.createObjectURL(blob);
+            track.coverMime = metadata.picture.mime || "image/jpeg";
+          }
+        } catch (error) {
+          console.warn(`Could not read embedded tags from ${track.file.name}:`, error);
+        }
+        if (!track.coverUrl) {
+          try {
+            const cachedArtwork = await readCachedOnlineArtwork(artworkSearchCacheKey(track));
+            if (cachedArtwork) {
+              track.coverUrl = URL.createObjectURL(cachedArtwork);
+              track.coverMime = cachedArtwork.type || "image/jpeg";
+            }
+          } catch (error) {
+            console.warn(`Could not read cached cover art for ${track.file.name}:`, error);
+          }
+        }
+        if (!track.coverUrl) track.onlineCoverUrl = await lookupOnlineArtwork(track);
+        if (!tracks.includes(track)) {
+          if (track.coverUrl) URL.revokeObjectURL(track.coverUrl);
+          return;
+        }
+        renderPlaylist();
+        if (tracks[currentIndex] === track) updateCurrentTrack(track, selectionVersion);
+      }
+
+      async function loadMetadataBatch(batch) {
+        let cursor = 0;
+        const workerCount = Math.min(3, batch.length);
+        await Promise.all(Array.from({ length: workerCount }, async () => {
+          while (cursor < batch.length) {
+            const track = batch[cursor++];
+            try {
+              await loadTrackMetadata(track);
+            } catch (error) {
+              console.warn(`Metadata processing failed for ${track.file.name}:`, error);
+            } finally {
+              track.metadataReady = true;
+              if (tracks[currentIndex] === track) updateCurrentTrack(track, selectionVersion);
+            }
+          }
+        }));
+      }
+
+      function formatTime(seconds) {
+        if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+        const minutes = Math.floor(seconds / 60);
+        const remainder = Math.floor(seconds % 60).toString().padStart(2, "0");
+        return `${minutes}:${remainder}`;
+      }
+
+      function setRangeProgress(input, fraction) {
+        input.style.setProperty("--range-progress", `${Math.max(0, Math.min(100, fraction * 100))}%`);
+      }
+
+      function showStatus(message) {
+        window.clearTimeout(statusTimer);
+        statusMessage.textContent = message;
+        statusTimer = window.setTimeout(() => { statusMessage.textContent = ""; }, 5000);
+      }
+
+      function updateButtons() {
+        const hasTracks = tracks.length > 0;
+        playButton.disabled = !hasTracks;
+        previousButton.disabled = !hasTracks;
+        nextButton.disabled = !hasTracks;
+        seekSlider.disabled = currentIndex < 0;
+        document.getElementById("clearButton").disabled = !hasTracks;
+        document.getElementById("trackCount").textContent = `${tracks.length} ${tracks.length === 1 ? "record" : "records"}`;
+      }
+
+      function renderPlaylist() {
+        playlist.replaceChildren();
+        if (!tracks.length) {
+          playlist.append(emptyState);
+          updateButtons();
+          return;
+        }
+        tracks.forEach((track, index) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `track-row${index === currentIndex ? " active" : ""}`;
+          button.setAttribute("aria-current", index === currentIndex ? "true" : "false");
+          button.setAttribute("aria-label", `Play ${track.title}`);
+          const thumbnail = document.createElement("span");
+          thumbnail.className = "track-thumb";
+          thumbnail.setAttribute("aria-hidden", "true");
+          const artworkUrl = track.coverUrl || track.onlineCoverUrl;
+          if (artworkUrl) {
+            const image = document.createElement("img");
+            image.alt = "";
+            image.loading = "lazy";
+            image.decoding = "async";
+            image.onerror = () => image.remove();
+            image.src = artworkUrl;
+            thumbnail.append(image);
+          }
+          const number = document.createElement("span");
+          number.className = "track-index";
+          number.textContent = index === currentIndex && !audio.paused ? "♫" : String(index + 1).padStart(2, "0");
+          const metadata = document.createElement("span");
+          metadata.className = "track-meta";
+          const title = document.createElement("span");
+          title.className = "track-name";
+          title.textContent = track.title;
+          const fileName = document.createElement("span");
+          fileName.className = "track-file";
+          fileName.textContent = [track.artist, track.album].filter(Boolean).join(" · ") || track.file.name;
+          const duration = document.createElement("span");
+          duration.className = "track-duration";
+          duration.textContent = track.duration ? formatTime(track.duration) : "—:——";
+          metadata.append(title, fileName);
+          button.append(thumbnail, number, metadata, duration);
+          button.addEventListener("click", () => { selectTrack(index, true); });
+          playlist.append(button);
+        });
+        updateButtons();
+      }
+
+      async function selectTrack(index, shouldPlay) {
+        if (index < 0 || index >= tracks.length) return;
+        currentIndex = index;
+        selectionVersion++;
+        const version = selectionVersion;
+        const track = tracks[index];
+        audio.src = track.url;
+        audio.load();
+        currentTitle.textContent = track.title;
+        currentArtist.textContent = track.artist || track.file.name;
+        labelTitle.textContent = track.title;
+        labelArtist.textContent = (track.artist || "NEEDLE & GROOVE").toUpperCase();
+        setCoverArtwork(track.coverUrl || track.onlineCoverUrl || "", track);
+        document.getElementById("elapsed").textContent = "0:00";
+        document.getElementById("duration").textContent = "0:00";
+        seekSlider.value = "0";
+        setRangeProgress(seekSlider, 0);
+        deck.classList.add("is-on");
+        setDeckPowered(false);
+        document.getElementById("powerText").textContent = "Ready";
+        document.getElementById("powerButton").setAttribute("aria-label", "Power off");
+        document.getElementById("powerButton").setAttribute("title", "Power off");
+        renderPlaylist();
+        if (track.metadataReady) updateCurrentTrack(track, version);
+        if (shouldPlay) {
+          await startPlayback();
+        }
+      }
+
+      function setPlaying(playing) {
+        deck.classList.toggle("playing", playing);
+        setDeckPowered(playing);
+        document.getElementById("powerText").textContent = playing ? "Playing" : deck.classList.contains("is-on") ? "Ready" : "Standby";
+        if ("mediaSession" in navigator) navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+        playButton.setAttribute("aria-label", playing ? "Pause" : "Play");
+        playButton.setAttribute("title", playing ? "Pause" : "Play");
+        document.getElementById("playIcon").innerHTML = playing
+          ? '<path d="M7 5.5A1.5 1.5 0 018.5 4h1A1.5 1.5 0 0111 5.5v13a1.5 1.5 0 01-1.5 1.5h-1A1.5 1.5 0 017 18.5zm6 0A1.5 1.5 0 0114.5 4h1A1.5 1.5 0 0117 5.5v13a1.5 1.5 0 01-1.5 1.5h-1a1.5 1.5 0 01-1.5-1.5z"/>'
+          : '<path d="M8 5.5a1 1 0 011.5-.86l10 6.36a1.2 1.2 0 010 2l-10 6.36A1 1 0 018 18.5z"/>';
+        document.getElementById("powerButton").setAttribute("aria-label", playing ? "Power off" : "Power on and play");
+        document.getElementById("powerButton").setAttribute("title", playing ? "Power off" : "Power on and play");
+        renderPlaylist();
+      }
+
+      async function startPlayback() {
+        try {
+          await prepareAudioGraph();
+        } catch (error) {
+          showStatus("Audio effects could not start; check browser audio permissions and try again.");
+          console.error("Web Audio setup failed:", error);
+        }
+        try {
+          await audio.play();
+        } catch (error) {
+          showStatus("This audio format could not be played by your browser.");
+          console.error("Audio playback failed:", error);
+        }
+      }
+
+      async function togglePlayback() {
+        if (currentIndex < 0) {
+          if (tracks.length) await selectTrack(0, true);
+          else showStatus("Add music to your collection first.");
+          return;
+        }
+        if (audio.paused) {
+          await startPlayback();
+        } else {
+          audio.pause();
+        }
+      }
+
+      function moveTrack(offset) {
+        if (!tracks.length) return;
+        const nextIndex = (currentIndex + offset + tracks.length) % tracks.length;
+        selectTrack(nextIndex, true);
+      }
+
+      function addFiles(fileList) {
+        const files = Array.from(fileList || []).filter(file =>
+          file.type.startsWith("audio/") || /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac|aiff|aif|wma|alac)$/i.test(file.name)
+        );
+        if (!files.length) {
+          if (fileList && fileList.length) showStatus("No supported audio files were found in that selection.");
+          return;
+        }
+        const selectedTrack = currentIndex >= 0 ? tracks[currentIndex] : null;
+        const knownFiles = new Set(tracks.map(track => `${track.file.name}:${track.file.size}:${track.file.lastModified}`));
+        const addedTracks = [];
+        let added = 0;
+        files.forEach(file => {
+          const key = `${file.name}:${file.size}:${file.lastModified}`;
+          if (knownFiles.has(key)) return;
+          knownFiles.add(key);
+          const track = {
+            file,
+            title: file.name.replace(/\.[^.]+$/, ""),
+            artist: "",
+            album: "",
+            url: URL.createObjectURL(file),
+            duration: 0,
+            coverUrl: "",
+            onlineCoverUrl: "",
+            metadataReady: false
+          };
+          tracks.push(track);
+          addedTracks.push(track);
+          added++;
+        });
+        tracks.sort((a, b) => a.file.name.localeCompare(b.file.name, undefined, { numeric: true, sensitivity: "base" }));
+        if (selectedTrack) currentIndex = tracks.indexOf(selectedTrack);
+        loadMetadataBatch(addedTracks);
+        renderPlaylist();
+        if (added) showStatus(`${added} ${added === 1 ? "track added" : "tracks added"} to your collection.`);
+        else showStatus("Those tracks are already in your collection.");
+        if (currentIndex < 0 && tracks.length) selectTrack(0, false);
+      }
+
+      filePicker.addEventListener("change", event => {
+        addFiles(event.target.files);
+        event.target.value = "";
+      });
+      document.getElementById("browseFiles").addEventListener("click", () => filePicker.click());
+      folderPicker.addEventListener("change", event => {
+        addFiles(event.target.files);
+        event.target.value = "";
+      });
+      document.getElementById("browseFolder").addEventListener("click", () => folderPicker.click());
+      document.getElementById("powerButton").addEventListener("click", () => {
+        if (!deck.classList.contains("is-on")) {
+          if (currentIndex < 0) {
+            showStatus("Choose a record from your collection first.");
+            return;
+          }
+          deck.classList.add("is-on");
+          togglePlayback();
+        } else {
+          audio.pause();
+          deck.classList.remove("is-on", "playing");
+          setDeckPowered(false);
+          document.getElementById("powerText").textContent = "Standby";
+        }
+      });
+      playButton.addEventListener("click", togglePlayback);
+      previousButton.addEventListener("click", () => {
+        if (audio.currentTime > 3) audio.currentTime = 0;
+        else moveTrack(-1);
+      });
+      nextButton.addEventListener("click", () => moveTrack(1));
+      document.getElementById("clearButton").addEventListener("click", () => {
+        audio.pause();
+        audio.removeAttribute("src");
+        audio.load();
+        tracks.forEach(track => URL.revokeObjectURL(track.url));
+        tracks.forEach(track => { if (track.coverUrl) URL.revokeObjectURL(track.coverUrl); });
+        tracks.length = 0;
+        currentIndex = -1;
+        selectionVersion++;
+        currentTitle.textContent = "Nothing playing yet";
+        currentArtist.textContent = "Choose a record from your collection";
+        setCoverArtwork("", null);
+        labelTitle.textContent = "SIDE A";
+        labelArtist.textContent = "NEEDLE & GROOVE";
+        document.getElementById("elapsed").textContent = "0:00";
+        document.getElementById("duration").textContent = "0:00";
+        seekSlider.value = "0";
+        deck.classList.remove("is-on", "playing");
+        setDeckPowered(false);
+        document.getElementById("powerText").textContent = "Standby";
+        renderPlaylist();
+      });
+      audio.addEventListener("play", () => {
+        deck.classList.add("is-on");
+        setPlaying(true);
+        startOrbitMotion();
+        startVisualizer();
+      });
+      audio.addEventListener("pause", () => {
+        stopOrbitMotion();
+        setPlaying(false);
+        stopVisualizer();
+      });
+      audio.addEventListener("ended", () => {
+        if (currentIndex < tracks.length - 1) moveTrack(1);
+        else setPlaying(false);
+      });
+      audio.addEventListener("loadedmetadata", () => {
+        const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+        document.getElementById("duration").textContent = formatTime(duration);
+        if (currentIndex >= 0) {
+          tracks[currentIndex].duration = duration;
+          renderPlaylist();
+        }
+        if ("mediaSession" in navigator && navigator.mediaSession.setPositionState && Number.isFinite(duration) && duration > 0) {
+          try { navigator.mediaSession.setPositionState({ duration, playbackRate: audio.playbackRate, position: audio.currentTime }); }
+          catch (error) { console.warn("Media session position could not be updated:", error); }
+        }
+      });
+      audio.addEventListener("timeupdate", () => {
+        const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+        document.getElementById("elapsed").textContent = formatTime(audio.currentTime);
+        if (duration) {
+          seekSlider.value = String((audio.currentTime / duration) * 100);
+          setRangeProgress(seekSlider, audio.currentTime / duration);
+          if ("mediaSession" in navigator && navigator.mediaSession.setPositionState) {
+            try { navigator.mediaSession.setPositionState({ duration, playbackRate: audio.playbackRate, position: audio.currentTime }); }
+            catch (error) { console.warn("Media session position could not be updated:", error); }
+          }
+        }
+      });
+      audio.addEventListener("error", () => {
+        if (currentIndex >= 0 && audio.error) showStatus("This audio file could not be decoded by your browser.");
+      });
+      seekSlider.addEventListener("input", () => {
+        if (Number.isFinite(audio.duration)) {
+          audio.currentTime = (Number(seekSlider.value) / 100) * audio.duration;
+          setRangeProgress(seekSlider, Number(seekSlider.value) / 100);
+        }
+      });
+      volumeSlider.addEventListener("input", () => {
+        audio.volume = Number(volumeSlider.value);
+        setRangeProgress(volumeSlider, audio.volume);
+      });
+      ["bassEq", "midEq", "trebleEq"].forEach(id => {
+        document.getElementById(id).addEventListener("input", applyEqualizer);
+      });
+      document.getElementById("eqReset").addEventListener("click", () => {
+        ["bassEq", "midEq", "trebleEq"].forEach(id => { document.getElementById(id).value = "0"; });
+        applyEqualizer();
+      });
+      document.getElementById("spatialMode").addEventListener("change", event => {
+        requestSpatialMode(event.target.value);
+      });
+      document.getElementById("spatialToggle").addEventListener("change", event => {
+        if (event.target.checked) requestSpatialMode("8d");
+        else if (currentAudioMode === "8d") requestSpatialMode("original");
+      });
+      audio.volume = Number(volumeSlider.value);
+      setRangeProgress(volumeSlider, audio.volume);
+      applyEqualizer();
+
+      const themeToggle = document.getElementById("themeToggle");
+      const themeName = document.getElementById("themeName");
+      const themeBackdrop = document.getElementById("themeBackdrop");
+      const onlineArtToggle = document.getElementById("onlineArtToggle");
+      let theme = "gold";
+      try {
+        theme = localStorage.getItem("needle-groove-theme") === "wisteria" ? "wisteria" : "gold";
+      } catch (error) {
+        console.warn("Theme preference could not be read:", error);
+      }
+      try {
+        const onlineArtworkPreference = localStorage.getItem("needle-groove-online-art");
+        if (onlineArtworkPreference !== null) onlineArtToggle.checked = onlineArtworkPreference !== "false";
+      } catch (error) {
+        console.warn("Online artwork preference could not be read:", error);
+      }
+
+      function openThemeArtworkDatabase() {
+        return new Promise((resolve, reject) => {
+          if (!("indexedDB" in window)) {
+            reject(new Error("IndexedDB is unavailable"));
+            return;
+          }
+          const request = window.indexedDB.open("needle-groove-local-assets", 1);
+          request.onupgradeneeded = () => {
+            const database = request.result;
+            if (!database.objectStoreNames.contains("artwork")) database.createObjectStore("artwork");
+          };
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error || new Error("Could not open local artwork storage"));
+          request.onblocked = () => reject(new Error("Local artwork storage is blocked by another tab"));
+        });
+      }
+
+      async function storeThemeArtwork(blob) {
+        const database = await openThemeArtworkDatabase();
+        await new Promise((resolve, reject) => {
+          const transaction = database.transaction("artwork", "readwrite");
+          transaction.objectStore("artwork").put(blob, "shinobu-background");
+          transaction.oncomplete = resolve;
+          transaction.onerror = () => reject(transaction.error || new Error("Could not save theme artwork"));
+          transaction.onabort = () => reject(transaction.error || new Error("Saving theme artwork was aborted"));
+        }).finally(() => database.close());
+      }
+
+      async function readThemeArtwork() {
+        const database = await openThemeArtworkDatabase();
+        try {
+          return await new Promise((resolve, reject) => {
+            const request = database.transaction("artwork", "readonly")
+              .objectStore("artwork").get("shinobu-background");
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => reject(request.error || new Error("Could not read saved theme artwork"));
+          });
+        } finally {
+          database.close();
+        }
+      }
+
+      function activateThemeArtwork(file, persist) {
+        const candidateUrl = URL.createObjectURL(file);
+        const image = new Image();
+        const version = ++themeArtLoadVersion;
+        image.onload = async () => {
+          if (version !== themeArtLoadVersion) {
+            URL.revokeObjectURL(candidateUrl);
+            return;
+          }
+          const previousUrl = themeArtUrl;
+          themeArtUrl = candidateUrl;
+          themeBackdrop.style.backgroundImage = `url("${candidateUrl}")`;
+          themeBackdrop.classList.add("has-art");
+          document.getElementById("characterArtTitle").textContent = "Your garden has a new portrait";
+          document.getElementById("characterArtNote").textContent = "Your chosen image is stored only in this browser. The wisteria atmosphere stays around it.";
+          if (previousUrl) URL.revokeObjectURL(previousUrl);
+          if (persist) {
+            try {
+              await storeThemeArtwork(file);
+              showStatus("Your theme image was saved on this device.");
+            } catch (error) {
+              showStatus("The image is active for this session, but browser storage could not save it.");
+              console.error("Theme artwork could not be saved:", error);
+            }
+          }
+        };
+        image.onerror = () => {
+          URL.revokeObjectURL(candidateUrl);
+          if (version === themeArtLoadVersion) showStatus("That image could not be loaded. Choose a valid JPEG, PNG, WebP or AVIF image.");
+        };
+        image.src = candidateUrl;
+      }
+
+      async function restoreThemeArtwork() {
+        try {
+          const savedArtwork = await readThemeArtwork();
+          if (savedArtwork) activateThemeArtwork(savedArtwork, false);
+        } catch (error) {
+          console.warn("Saved theme artwork could not be restored:", error);
+          showStatus("Saved theme artwork could not be restored in this browser.");
+        }
+      }
+
+      function applyTheme() {
+        const wisteria = theme === "wisteria";
+        document.documentElement.dataset.theme = wisteria ? "wisteria" : "gold";
+        themeName.textContent = wisteria ? "Shinobu's Garden" : "Vinyl Room";
+        themeToggle.setAttribute("aria-label", `Switch to ${wisteria ? "Vinyl Room" : "Shinobu's Garden"} theme`);
+        document.getElementById("themeEyebrow").textContent = wisteria ? "Wisteria moon · private listening garden" : "The listening room";
+        document.getElementById("themeHeading").textContent = wisteria ? "A little moonlight, a little music." : "Made for the long way home.";
+        document.getElementById("themeSubtitle").textContent = wisteria
+          ? "Wisteria blooms, butterfly wings, and a quiet violet night for the records you love."
+          : "A softer place to listen to the music you already love.";
+        document.querySelector('meta[name="theme-color"]').content = wisteria ? "#100d18" : "#11110f";
+      }
+      themeToggle.addEventListener("click", () => {
+        theme = theme === "gold" ? "wisteria" : "gold";
+        applyTheme();
+        try {
+          localStorage.setItem("needle-groove-theme", theme);
+        } catch (error) {
+          console.warn("Theme preference could not be saved:", error);
+        }
+      });
+      applyTheme();
+      restoreThemeArtwork();
+      document.getElementById("characterArtButton").addEventListener("click", () => {
+        document.getElementById("characterArtPicker").click();
+      });
+      document.getElementById("characterArtPicker").addEventListener("change", event => {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = "";
+        if (!file) return;
+        if (!/^image\/(jpeg|png|webp|avif)$/i.test(file.type)) {
+          showStatus("Choose a JPEG, PNG, WebP or AVIF image for the theme artwork.");
+          return;
+        }
+        activateThemeArtwork(file, true);
+      });
+      async function loadMissingOnlineArtwork() {
+        for (const track of [...tracks]) {
+          if (!tracks.includes(track) || track.coverUrl || track.onlineCoverUrl) continue;
+          try {
+            track.onlineCoverUrl = await lookupOnlineArtwork(track);
+          } catch (error) {
+            console.error(`Online cover-art lookup failed for ${track.file.name}:`, error);
+            showStatus("Some online cover-art lookups could not be completed.");
+          }
+          if (tracks[currentIndex] === track) updateCurrentTrack(track, selectionVersion);
+          renderPlaylist();
+        }
+      }
+      onlineArtToggle.addEventListener("change", async event => {
+        try {
+          localStorage.setItem("needle-groove-online-art", String(event.target.checked));
+        } catch (error) {
+          console.warn("Online artwork preference could not be saved:", error);
+        }
+        if (!event.target.checked) return;
+        await loadMissingOnlineArtwork();
+      });
+      window.addEventListener("online", () => {
+        if (onlineArtToggle.checked) loadMissingOnlineArtwork();
+      });
+      window.addEventListener("pagehide", () => {
+        tracks.forEach(track => {
+          URL.revokeObjectURL(track.url);
+          if (track.coverUrl) URL.revokeObjectURL(track.coverUrl);
+        });
+        ++themeArtLoadVersion;
+        if (themeArtUrl) URL.revokeObjectURL(themeArtUrl);
+      });
+
+      const turntable = document.querySelector(".turntable");
+      turntable.addEventListener("dragover", event => {
+        event.preventDefault();
+        turntable.style.borderColor = "rgba(var(--accent-rgb),.65)";
+      });
+      turntable.addEventListener("dragleave", () => { turntable.style.borderColor = ""; });
+      turntable.addEventListener("drop", event => {
+        event.preventDefault();
+        turntable.style.borderColor = "";
+        addFiles(event.dataTransfer.files);
+      });
+      updateButtons();
+    })();
+  </script>
+</body>
+</html>
