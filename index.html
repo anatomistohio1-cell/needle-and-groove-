@@ -524,6 +524,8 @@
               <button class="icon-button" id="previousButton" type="button" aria-label="Previous track" title="Previous track" disabled><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zm13 0v14L9 12z"/></svg></button>
               <button class="icon-button play-button" id="playButton" type="button" aria-label="Play" title="Play" disabled><svg id="playIcon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5a1 1 0 011.5-.86l10 6.36a1.2 1.2 0 010 2l-10 6.36A1 1 0 018 18.5z"/></svg></button>
               <button class="icon-button" id="nextButton" type="button" aria-label="Next track" title="Next track" disabled><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 5h2v14h-2zM5 5v14l10-7z"/></svg></button>
+              <button class="icon-button mode-button" id="shuffleButton" type="button" aria-label="Shuffle off" title="Shuffle off">↝</button>
+              <button class="icon-button mode-button" id="repeatButton" type="button" aria-label="Repeat off" title="Repeat off">↻</button>
             </div>
           </div>
           <div class="timeline">
@@ -603,6 +605,8 @@
       const playButton = document.getElementById("playButton");
       const previousButton = document.getElementById("previousButton");
       const nextButton = document.getElementById("nextButton");
+      const shuffleButton = document.getElementById("shuffleButton");
+      const repeatButton = document.getElementById("repeatButton");
       const seekSlider = document.getElementById("seekSlider");
       const volumeSlider = document.getElementById("volumeSlider");
       const currentTitle = document.getElementById("currentTitle");
@@ -623,6 +627,8 @@
       );
       spinAnimation.pause();
       let currentIndex = -1;
+      let shuffleEnabled = false;
+      let repeatMode = "off";
       let statusTimer;
       let spinRampFrame = 0;
       let audioContext = null;
@@ -1750,6 +1756,29 @@
         selectTrack(nextIndex, true);
       }
 
+      function moveNextTrack() {
+        if (!tracks.length) return;
+        if (shuffleEnabled && tracks.length > 1) {
+          let nextIndex = currentIndex;
+          while (nextIndex === currentIndex) nextIndex = Math.floor(Math.random() * tracks.length);
+          selectTrack(nextIndex, true);
+          return;
+        }
+        if (currentIndex < tracks.length - 1) selectTrack(currentIndex + 1, true);
+        else if (repeatMode === "all") selectTrack(0, true);
+        else setPlaying(false);
+      }
+
+      function updatePlaybackModes() {
+        shuffleButton.classList.toggle("is-active", shuffleEnabled);
+        shuffleButton.setAttribute("aria-label", "Shuffle " + (shuffleEnabled ? "on" : "off"));
+        shuffleButton.title = "Shuffle " + (shuffleEnabled ? "on" : "off");
+        repeatButton.classList.toggle("is-active", repeatMode !== "off");
+        const label = repeatMode === "one" ? "Repeat track" : repeatMode === "all" ? "Repeat playlist" : "Repeat off";
+        repeatButton.setAttribute("aria-label", label);
+        repeatButton.title = label;
+      }
+
       function addFiles(fileList) {
         const files = Array.from(fileList || []).filter(file =>
           file.type.startsWith("audio/") || /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac|aiff|aif|wma|alac)$/i.test(file.name)
@@ -1821,7 +1850,12 @@
         if (audio.currentTime > 3) audio.currentTime = 0;
         else moveTrack(-1);
       });
-      nextButton.addEventListener("click", () => moveTrack(1));
+      nextButton.addEventListener("click", () => moveNextTrack());
+      shuffleButton.addEventListener("click", () => { shuffleEnabled = !shuffleEnabled; updatePlaybackModes(); });
+      repeatButton.addEventListener("click", () => {
+        repeatMode = repeatMode === "off" ? "one" : repeatMode === "one" ? "all" : "off";
+        updatePlaybackModes();
+      });
       document.getElementById("clearButton").addEventListener("click", () => {
         audio.pause();
         audio.removeAttribute("src");
@@ -1857,8 +1891,12 @@
         stopVisualizer();
       });
       audio.addEventListener("ended", () => {
-        if (currentIndex < tracks.length - 1) moveTrack(1);
-        else setPlaying(false);
+        if (repeatMode === "one") {
+          audio.currentTime = 0;
+          startPlayback();
+        } else {
+          moveNextTrack();
+        }
       });
       audio.addEventListener("loadedmetadata", () => {
         const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
@@ -2129,6 +2167,7 @@
         addFiles(event.dataTransfer.files);
       });
       updateButtons();
+      updatePlaybackModes();
       restoreRememberedPlaylist();
       if ("serviceWorker" in navigator && location.protocol === "https:") {
         navigator.serviceWorker.register("/service-worker.js")
