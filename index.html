@@ -1214,6 +1214,7 @@
         }
         const entry = cache[cacheKey];
         if (!entry) return undefined;
+        if (entry.url === "" && Number.isFinite(entry.expiresAt) && entry.expiresAt - Date.now() > 60 * 1000) return undefined;
         if (!Number.isFinite(entry.expiresAt) || entry.expiresAt <= Date.now()) {
           delete cache[cacheKey];
           try {
