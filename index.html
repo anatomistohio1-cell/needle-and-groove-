@@ -201,10 +201,14 @@
       box-shadow: 0 1px 8px rgba(0,0,0,.45), inset 0 0 0 3px rgba(0,0,0,.12);
       color: #211b13; text-align: center;
     }
-    .label-copy { max-width: 75%; overflow: hidden; }
+    .vinyl-label.has-cover { background: #171513; }
+    .vinyl-cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    .vinyl-cover:not([hidden]) { display: block; }
+    .vinyl-label.has-cover .label-copy { display: none; }
+    .label-copy { position: relative; z-index: 1; max-width: 75%; overflow: hidden; }
     .label-title { display: block; overflow: hidden; font: 600 clamp(6px, .8vw, 9px)/1.2 "DM Sans", sans-serif; text-overflow: ellipsis; white-space: nowrap; }
     .label-artist { display: block; margin-top: 3px; font: 6px "DM Mono", monospace; opacity: .72; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .label-center { position: absolute; width: 5px; height: 5px; bottom: 17%; border: 1px solid rgba(0,0,0,.45); border-radius: 50%; background: #dfdbce; }
+    .label-center { position: absolute; z-index: 2; width: 5px; height: 5px; bottom: 17%; border: 1px solid rgba(0,0,0,.45); border-radius: 50%; background: #dfdbce; }
     .tonearm {
       position: absolute; z-index: 3; left: 69%; top: 12%; width: 7%; height: 67%;
       transform: rotate(-24deg); transform-origin: 50% 7%;
@@ -269,8 +273,8 @@
     .now-playing { min-width: 0; }
     .now-playing-main { display: flex; align-items: center; gap: 11px; min-width: 0; }
     .now-playing-copy { min-width: 0; }
-    .cover-art { position: relative; width: 46px; height: 46px; flex: 0 0 auto; overflow: hidden; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 7px; background: repeating-radial-gradient(circle,#1b1a17 0 2px,#2c2922 2.5px 3px,#181715 3.5px 5px); color: var(--accent); box-shadow: 0 3px 10px rgba(0,0,0,.2); }
-    .cover-art svg { width: 20px; height: 20px; }
+    .cover-art { position: relative; width: 60px; height: 60px; flex: 0 0 auto; overflow: hidden; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 7px; background: repeating-radial-gradient(circle,#1b1a17 0 2px,#2c2922 2.5px 3px,#181715 3.5px 5px); color: var(--accent); box-shadow: 0 3px 10px rgba(0,0,0,.2); }
+    .cover-art svg { width: 24px; height: 24px; }
     .cover-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     .now-kicker { color: var(--muted); font: 9px "DM Mono", monospace; letter-spacing: .13em; text-transform: uppercase; }
     .track-title { margin-top: 6px; overflow: hidden; font: 500 16px/1.25 "Playfair Display", Georgia, serif; text-overflow: ellipsis; white-space: nowrap; }
@@ -495,7 +499,7 @@
           <div class="turntable" aria-label="Illustration of a vinyl turntable">
             <div class="plinth">
               <div class="platter">
-                <div class="vinyl-label"><div class="label-copy"><span class="label-title" id="labelTitle">SIDE A</span><span class="label-artist" id="labelArtist">NEEDLE &amp; GROOVE</span></div><span class="label-center"></span></div>
+                <div class="vinyl-label" id="vinylLabel"><img class="vinyl-cover" id="vinylCoverImage" alt="" hidden><div class="label-copy"><span class="label-title" id="labelTitle">SIDE A</span><span class="label-artist" id="labelArtist">NEEDLE &amp; GROOVE</span></div><span class="label-center"></span></div>
               </div>
               <div class="tonearm" aria-hidden="true"><span class="tonearm-pivot"></span><span class="tonearm-head"></span></div>
               <span class="plinth-badge">N &amp; G · 33⅓ RPM</span>
@@ -603,6 +607,8 @@
       const labelArtist = document.getElementById("labelArtist");
       const statusMessage = document.getElementById("statusMessage");
       const coverImage = document.getElementById("coverImage");
+      const vinylCoverImage = document.getElementById("vinylCoverImage");
+      const vinylLabel = document.getElementById("vinylLabel");
       const visualizerCanvas = document.getElementById("visualizerCanvas");
       const visualizerContext = visualizerCanvas.getContext("2d");
       const tracks = [];
@@ -1439,11 +1445,21 @@
       }
       function setCoverArtwork(url, track) {
         currentCoverUrl = url || "";
-        coverImage.hidden = !url;
+        const hasArtwork = Boolean(url);
+        coverImage.hidden = !hasArtwork;
+        vinylCoverImage.hidden = !hasArtwork;
+        vinylLabel.classList.toggle("has-cover", hasArtwork);
+        vinylCoverImage.onerror = () => {
+          vinylCoverImage.hidden = true;
+          vinylLabel.classList.remove("has-cover");
+        };
         coverImage.onerror = async () => {
           if (tracks[currentIndex] !== track || currentCoverUrl !== url) return;
           coverImage.hidden = true;
+          vinylCoverImage.hidden = true;
+          vinylLabel.classList.remove("has-cover");
           coverImage.removeAttribute("src");
+          vinylCoverImage.removeAttribute("src");
           document.getElementById("coverArt").setAttribute("aria-label", "Album artwork unavailable");
           if (!track) return;
           const failedOnlineUrl = /^https?:/i.test(url || "");
@@ -1468,10 +1484,12 @@
         };
         if (url) {
           coverImage.src = url;
+          vinylCoverImage.src = url;
           coverImage.alt = `Album artwork for ${track ? track.title : "selected track"}`;
           document.getElementById("coverArt").setAttribute("aria-label", `Album artwork for ${track ? track.title : "selected track"}`);
         } else {
           coverImage.removeAttribute("src");
+          vinylCoverImage.removeAttribute("src");
           coverImage.alt = "";
           document.getElementById("coverArt").setAttribute("aria-label", "Album artwork unavailable");
         }
