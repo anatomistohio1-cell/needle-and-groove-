@@ -565,6 +565,7 @@
               <input class="file-input" id="folderPicker" type="file" aria-label="Choose a folder of audio files" accept="audio/*,.mp3,.m4a,.aac,.ogg,.oga,.opus,.wav,.flac,.aiff,.aif,.wma,.alac" webkitdirectory directory multiple>
             </div>
             <label class="online-art-option"><input id="onlineArtToggle" type="checkbox" checked><span>Find missing cover art online automatically</span><small>If enabled, track title, artist and album may be sent to iTunes; audio files stay on this device.</small></label>
+            <label class="online-art-option"><input id="rememberPlaylistToggle" type="checkbox"><span>Remember my playlist on this device</span><small>Saves imported audio files in this browser so the playlist returns on your next visit. Turn it off anytime to remove the saved copy.</small></label>
           </div>
           <div class="playlist-toolbar"><span class="playlist-label">Side A · playlist</span><button class="clear-button" id="clearButton" type="button" disabled>Clear all</button></div>
           <div class="playlist" id="playlist" aria-label="Playlist">
@@ -657,11 +658,14 @@
       }
 
       function applyEqualizer() {
-        [
+        const controls = [
           { id: "bassEq", output: "bassValue", node: audioGraph && audioGraph.bass },
           { id: "midEq", output: "midValue", node: audioGraph && audioGraph.mid },
           { id: "trebleEq", output: "trebleValue", node: audioGraph && audioGraph.treble }
-        ].forEach(({ id, output, node }) => {
+        ];
+        const requestedBoost = controls.reduce((sum, control) => sum + Math.max(0, Number(document.getElementById(control.id).value)), 0);
+        if (audioGraph && audioContext) audioGraph.eqHeadroom.gain.setTargetAtTime(Math.pow(10, -requestedBoost / 20), audioContext.currentTime, 0.08);
+        controls.forEach(({ id, output, node }) => {
           const control = document.getElementById(id);
           const value = Number(control.value);
           const percent = ((value + 12) / 24) * 100;
@@ -777,7 +781,7 @@
           }
           audioGraph.binauralInput = audioContext.createStereoPanner();
           audioGraph.binauralSplitter = audioContext.createChannelSplitter(2);
-          audioGraph.treble.connect(audioGraph.binauralInput);
+          audioGraph.eqHeadroom.connect(audioGraph.binauralInput);
           audioGraph.binauralInput.connect(audioGraph.binauralSplitter);
           audioGraph.binauralSplitter.connect(leftPanner, 0);
           audioGraph.binauralSplitter.connect(rightPanner, 1);
@@ -819,6 +823,8 @@
           const panOscillator = audioContext.createOscillator();
           panOscillator.type = "sine";
           panOscillator.frequency.value = 0.09;
+          const eqHeadroom = audioContext.createGain();
+          eqHeadroom.gain.value = 1;
           const originalGain = audioContext.createGain();
           const motionGain = audioContext.createGain();
           const binauralLeftGain = audioContext.createGain();
@@ -829,22 +835,29 @@
           binauralLeftGain.gain.value = 0;
           binauralRightGain.gain.value = 0;
           const compressor = audioContext.createDynamicsCompressor();
-          compressor.threshold.value = -8;
+          compressor.threshold.value = -6;
           compressor.knee.value = 10;
-          compressor.ratio.value = 3;
-          compressor.attack.value = 0.006;
-          compressor.release.value = 0.22;
+          compressor.ratio.value = 2;
+          compressor.attack.value = 0.01;
+          compressor.release.value = 0.18;
+          const limiter = audioContext.createDynamicsCompressor();
+          limiter.threshold.value = -1;
+          limiter.knee.value = 0;
+          limiter.ratio.value = 20;
+          limiter.attack.value = 0.003;
+          limiter.release.value = 0.12;
           const analyser = audioContext.createAnalyser();
           analyser.fftSize = 1024;
           analyser.smoothingTimeConstant = 0.82;
           audioSource.connect(bass).connect(mid).connect(treble);
-          treble.connect(originalGain).connect(modeBus);
-          treble.connect(panner).connect(motionGain).connect(modeBus);
-          modeBus.connect(compressor).connect(analyser).connect(audioContext.destination);
+          treble.connect(eqHeadroom);
+          eqHeadroom.connect(originalGain).connect(modeBus);
+          eqHeadroom.connect(panner).connect(motionGain).connect(modeBus);
+          modeBus.connect(compressor).connect(limiter).connect(analyser).connect(audioContext.destination);
           panOscillator.connect(panDepth).connect(panner.pan);
           panOscillator.start();
           audioGraph = {
-            bass, mid, treble, panner, panDepth, analyser, compressor,
+            bass, mid, treble, eqHeadroom, panner, panDepth, analyser, compressor, limiter,
             originalGain, motionGain, binauralLeftGain, binauralRightGain,
             modeBus, binauralConnected: false, binauralInputConnected: false,
             binauralInput: null, binauralSplitter: null, binauralPanners: null
@@ -1643,6 +1656,9 @@
         } catch (error) {
           showStatus("Audio effects could not start; check browser audio permissions and try again.");
           console.error("Web Audio setup failed:", error);
+          if (audioSource && audioContext && !audioGraph) {
+            try { audioSource.connect(audioContext.destination); } catch {}
+          }
         }
         try {
           await audio.play();
@@ -1706,6 +1722,7 @@
         if (selectedTrack) currentIndex = tracks.indexOf(selectedTrack);
         loadMetadataBatch(addedTracks);
         renderPlaylist();
+        if (rememberPlaylistToggle.checked) saveRememberedPlaylist().catch(() => showStatus("Could not save locally; browser storage may be full."));
         if (added) showStatus(`${added} ${added === 1 ? "track added" : "tracks added"} to your collection.`);
         else showStatus("Those tracks are already in your collection.");
         if (currentIndex < 0 && tracks.length) selectTrack(0, false);
@@ -1763,6 +1780,7 @@
         setDeckPowered(false);
         document.getElementById("powerText").textContent = "Standby";
         renderPlaylist();
+        deleteRememberedPlaylist();
       });
       audio.addEventListener("play", () => {
         deck.classList.add("is-on");
@@ -1838,6 +1856,7 @@
       const themeName = document.getElementById("themeName");
       const themeBackdrop = document.getElementById("themeBackdrop");
       const onlineArtToggle = document.getElementById("onlineArtToggle");
+      const rememberPlaylistToggle = document.getElementById("rememberPlaylistToggle");
       let theme = "gold";
       try {
         theme = localStorage.getItem("needle-groove-theme") === "wisteria" ? "wisteria" : "gold";
@@ -1857,15 +1876,38 @@
             reject(new Error("IndexedDB is unavailable"));
             return;
           }
-          const request = window.indexedDB.open("needle-groove-local-assets", 1);
+          const request = window.indexedDB.open("needle-groove-local-assets", 2);
           request.onupgradeneeded = () => {
             const database = request.result;
             if (!database.objectStoreNames.contains("artwork")) database.createObjectStore("artwork");
+            if (!database.objectStoreNames.contains("playlist")) database.createObjectStore("playlist");
           };
           request.onsuccess = () => resolve(request.result);
           request.onerror = () => reject(request.error || new Error("Could not open local artwork storage"));
           request.onblocked = () => reject(new Error("Local artwork storage is blocked by another tab"));
         });
+      }
+
+      async function saveRememberedPlaylist() {
+        if (!rememberPlaylistToggle.checked) return;
+        const database = await openThemeArtworkDatabase();
+        try { await new Promise((resolve, reject) => {
+          const transaction = database.transaction("playlist", "readwrite");
+          transaction.objectStore("playlist").put({ items: tracks.map(track => ({ file: track.file })), currentIndex }, "collection");
+          transaction.oncomplete = resolve; transaction.onerror = () => reject(transaction.error);
+        }); } finally { database.close(); }
+      }
+      async function restoreRememberedPlaylist() {
+        if (!rememberPlaylistToggle.checked) return;
+        try {
+          const database = await openThemeArtworkDatabase();
+          const saved = await new Promise((resolve, reject) => { const request = database.transaction("playlist", "readonly").objectStore("playlist").get("collection"); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+          database.close();
+          if (saved?.items?.length) { addFiles(saved.items.map(item => item.file)); if (Number.isInteger(saved.currentIndex) && saved.currentIndex >= 0 && saved.currentIndex < tracks.length) selectTrack(saved.currentIndex, false); showStatus("Your saved playlist was restored from this device."); }
+        } catch (error) { console.warn("Saved playlist could not be restored:", error); showStatus("Saved playlist storage is unavailable in this browser."); }
+      }
+      async function deleteRememberedPlaylist() {
+        try { const database = await openThemeArtworkDatabase(); await new Promise((resolve, reject) => { const tx = database.transaction("playlist", "readwrite"); tx.objectStore("playlist").delete("collection"); tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); }); database.close(); } catch (error) { console.warn("Saved playlist could not be removed:", error); }
       }
 
       async function storeThemeArtwork(blob) {
@@ -1985,6 +2027,12 @@
           renderPlaylist();
         }
       }
+      try { rememberPlaylistToggle.checked = localStorage.getItem("needle-groove-remember-playlist") === "true"; } catch {}
+      rememberPlaylistToggle.addEventListener("change", event => {
+        try { localStorage.setItem("needle-groove-remember-playlist", String(event.target.checked)); } catch {}
+        if (event.target.checked) saveRememberedPlaylist().then(() => showStatus("Playlist saved on this device.")).catch(() => showStatus("Could not save locally. Your browser storage may be full."));
+        else deleteRememberedPlaylist();
+      });
       onlineArtToggle.addEventListener("change", async event => {
         try {
           localStorage.setItem("needle-groove-online-art", String(event.target.checked));
@@ -2018,7 +2066,9 @@
         addFiles(event.dataTransfer.files);
       });
       updateButtons();
+      restoreRememberedPlaylist();
     })();
   </script>
 </body>
 </html>
+
