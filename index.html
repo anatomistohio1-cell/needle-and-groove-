@@ -204,10 +204,11 @@
       box-shadow: 0 1px 8px rgba(0,0,0,.45), inset 0 0 0 3px rgba(0,0,0,.12);
       color: #211b13; text-align: center;
     }
-    .vinyl-label.has-cover { background: #171513; }
+    .vinyl-label.has-cover { width: 100%; height: 100%; border: 0; background: transparent; box-shadow: none; }
     .vinyl-cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
     .vinyl-cover:not([hidden]) { display: block; }
     .vinyl-label.has-cover .label-copy { display: none; }
+    .vinyl-label.has-cover .label-center { left: 50%; bottom: auto; top: 50%; transform: translate(-50%, -50%); }
     .label-copy { position: relative; z-index: 1; max-width: 75%; overflow: hidden; }
     .label-title { display: block; overflow: hidden; font: 600 clamp(6px, .8vw, 9px)/1.2 "DM Sans", sans-serif; text-overflow: ellipsis; white-space: nowrap; }
     .label-artist { display: block; margin-top: 3px; font: 6px "DM Mono", monospace; opacity: .72; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
