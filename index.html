@@ -1397,6 +1397,7 @@
         const request = (async () => {
           try {
             let artwork = "";
+            let resolvedMetadata = null;
             let hadSuccessfulSearch = false;
             for (const term of terms) {
               const controller = new AbortController();
@@ -1418,6 +1419,7 @@
                 const ambiguous = match && candidates[1] && match.score - candidates[1].score < 0.04;
                 if (match && !ambiguous) {
                   artwork = match.result.artworkUrl100.replace("/100x100bb", "/300x300bb");
+                  resolvedMetadata = match.result;
                   break;
                 }
               } finally {
@@ -1425,6 +1427,11 @@
               }
             }
             if (artwork) {
+              if (resolvedMetadata) {
+                if (resolvedMetadata.trackName) track.title = resolvedMetadata.trackName;
+                if (resolvedMetadata.artistName) track.artist = resolvedMetadata.artistName;
+                if (resolvedMetadata.collectionName) track.album = resolvedMetadata.collectionName;
+              }
               artworkCache.set(cacheKey, artwork);
               storeCachedOnlineArtwork(cacheKey, artwork).catch(error => {
                 console.warn("Online cover art could not be saved for offline use:", error);
