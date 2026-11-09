@@ -1236,7 +1236,7 @@
         }
         cache[cacheKey] = {
           url,
-          expiresAt: Date.now() + (url ? 30 * 24 * 60 * 60 * 1000 : 5 * 60 * 1000)
+          expiresAt: Date.now() + (url ? 30 * 24 * 60 * 60 * 1000 : 60 * 1000)
         };
         const oldestFirst = Object.entries(cache).sort((a, b) => a[1].expiresAt - b[1].expiresAt);
         while (oldestFirst.length > 100) delete cache[oldestFirst.shift()[0]];
@@ -1249,6 +1249,16 @@
 
       function artworkSearchCacheKey(track) {
         return normalizeSearchText(`${track.title}|${track.artist}|${track.album}`);
+      }
+
+      function forgetStoredArtworkResult(cacheKey) {
+        try {
+          const cache = JSON.parse(localStorage.getItem("needle-groove-artwork-cache") || "{}");
+          delete cache[cacheKey];
+          localStorage.setItem("needle-groove-artwork-cache", JSON.stringify(cache));
+        } catch (error) {
+          console.warn("A failed online artwork result could not be cleared:", error);
+        }
       }
 
       async function storeCachedOnlineArtwork(cacheKey, imageUrl) {
@@ -1346,73 +1356,86 @@
         return score / weight;
       }
 
-      async function lookupOnlineArtwork(track) {
+      async function lookupOnlineArtwork(track, excludedUrls = new Set()) {
         if (!document.getElementById("onlineArtToggle").checked) return "";
         const cacheKey = artworkSearchCacheKey(track);
-        if (artworkCache.has(cacheKey)) return artworkCache.get(cacheKey);
-        if (artworkPending.has(cacheKey)) return artworkPending.get(cacheKey);
+        const excluded = excludedUrls instanceof Set ? excludedUrls : new Set();
+        const normalizeArtworkUrl = url => String(url || "").replace("/100x100bb", "/300x300bb");
+        const isExcluded = url => excluded.has(url) || excluded.has(normalizeArtworkUrl(url));
+        const cachedArtwork = artworkCache.get(cacheKey);
+        if (cachedArtwork && !isExcluded(cachedArtwork)) return cachedArtwork;
+        const requestKey = cacheKey + "|" + [...excluded].sort().join("|");
+        if (artworkPending.has(requestKey)) return artworkPending.get(requestKey);
+        if (cachedArtwork && isExcluded(cachedArtwork)) artworkCache.delete(cacheKey);
         const storedArtwork = readStoredArtwork(cacheKey);
-        if (storedArtwork !== undefined) {
+        if (storedArtwork !== undefined && !isExcluded(storedArtwork)) {
           if (storedArtwork) artworkCache.set(cacheKey, storedArtwork);
           else artworkNegativeCache.set(cacheKey, Date.now());
           return storedArtwork;
         }
+        if (storedArtwork && isExcluded(storedArtwork)) forgetStoredArtworkResult(cacheKey);
         const negativeCache = artworkNegativeCache.get(cacheKey);
-        if (negativeCache && Date.now() - negativeCache < 5 * 60 * 1000) return "";
+        if (negativeCache && Date.now() - negativeCache < 60 * 1000) return "";
         if (negativeCache) artworkNegativeCache.delete(cacheKey);
-        if (!navigator.onLine) return "";
-        if (!track.title) {
-          artworkNegativeCache.set(cacheKey, Date.now());
-          storeArtworkResult(cacheKey, "");
-          return "";
-        }
-        const term = [track.title, track.artist || track.album].filter(Boolean).join(" ");
+        if (!navigator.onLine || !track.title) return "";
+        const terms = [...new Set([
+          [track.title, track.artist].filter(Boolean).join(" "),
+          [track.title, track.album].filter(Boolean).join(" "),
+          track.title
+        ].map(term => term.trim()).filter(Boolean))];
         const request = (async () => {
-          const controller = new AbortController();
-          const timeout = window.setTimeout(() => controller.abort(), 5000);
           try {
-            const endpoint = new URL("https://itunes.apple.com/search");
-            endpoint.searchParams.set("term", term);
-            endpoint.searchParams.set("entity", "song");
-            endpoint.searchParams.set("limit", "25");
-            const response = await fetch(endpoint, { signal: controller.signal });
-            if (!response.ok) throw new Error(`iTunes returned HTTP ${response.status}`);
-            const payload = await response.json();
-            const candidates = (Array.isArray(payload.results) ? payload.results : [])
-              .map(result => ({ result, score: scoreArtworkMatch(track, result) }))
-              .filter(candidate => candidate.score >= 0.78)
-              .sort((a, b) => b.score - a.score);
-            const match = candidates[0];
-            const ambiguous = match && candidates[1] && match.score - candidates[1].score < 0.04;
-            const artwork = match && !ambiguous && match.result.artworkUrl100
-              ? match.result.artworkUrl100.replace(/\/100x100bb(?=\.)/, "/300x300bb")
-              : "";
+            let artwork = "";
+            let hadSuccessfulSearch = false;
+            for (const term of terms) {
+              const controller = new AbortController();
+              const timeout = window.setTimeout(() => controller.abort(), 10000);
+              try {
+                const endpoint = new URL("https://itunes.apple.com/search");
+                endpoint.searchParams.set("term", term);
+                endpoint.searchParams.set("entity", "song");
+                endpoint.searchParams.set("limit", "50");
+                const response = await fetch(endpoint, { signal: controller.signal });
+                if (!response.ok) throw new Error("iTunes returned HTTP " + response.status);
+                const payload = await response.json();
+                hadSuccessfulSearch = true;
+                const candidates = (Array.isArray(payload.results) ? payload.results : [])
+                  .map(result => ({ result, score: scoreArtworkMatch(track, result) }))
+                  .filter(candidate => candidate.score >= 0.7 && candidate.result.artworkUrl100 && !isExcluded(candidate.result.artworkUrl100))
+                  .sort((a, b) => b.score - a.score);
+                const match = candidates[0];
+                const ambiguous = match && candidates[1] && match.score - candidates[1].score < 0.04;
+                if (match && !ambiguous) {
+                  artwork = match.result.artworkUrl100.replace("/100x100bb", "/300x300bb");
+                  break;
+                }
+              } finally {
+                window.clearTimeout(timeout);
+              }
+            }
             if (artwork) {
               artworkCache.set(cacheKey, artwork);
               storeCachedOnlineArtwork(cacheKey, artwork).catch(error => {
                 console.warn("Online cover art could not be saved for offline use:", error);
               });
+            } else if (hadSuccessfulSearch) {
+              artworkNegativeCache.set(cacheKey, Date.now());
+              storeArtworkResult(cacheKey, "");
             }
-            else artworkNegativeCache.set(cacheKey, Date.now());
-            storeArtworkResult(cacheKey, artwork);
+            if (artwork) storeArtworkResult(cacheKey, artwork);
             return artwork;
           } catch (error) {
-            console.warn("Online cover-art lookup unavailable:", error);
-            artworkNegativeCache.set(cacheKey, Date.now());
-            storeArtworkResult(cacheKey, "");
+            console.warn("Online cover-art lookup unavailable; it can be retried:", error);
             return "";
-          } finally {
-            window.clearTimeout(timeout);
           }
         })();
-        artworkPending.set(cacheKey, request);
+        artworkPending.set(requestKey, request);
         try {
           return await request;
         } finally {
-          artworkPending.delete(cacheKey);
+          artworkPending.delete(requestKey);
         }
       }
-
       function setCoverArtwork(url, track) {
         currentCoverUrl = url || "";
         coverImage.hidden = !url;
@@ -1421,14 +1444,25 @@
           coverImage.hidden = true;
           coverImage.removeAttribute("src");
           document.getElementById("coverArt").setAttribute("aria-label", "Album artwork unavailable");
-          if (track && track.coverUrl === url) {
+          if (!track) return;
+          const failedOnlineUrl = /^https?:/i.test(url || "");
+          if (track.coverUrl === url) {
             URL.revokeObjectURL(track.coverUrl);
             track.coverUrl = "";
-            track.onlineCoverUrl = await lookupOnlineArtwork(track);
-            if (tracks[currentIndex] === track && track.onlineCoverUrl) {
-              updateCurrentTrack(track, selectionVersion);
-              renderPlaylist();
-            }
+          }
+          if (track.onlineCoverUrl === url) track.onlineCoverUrl = "";
+          const excluded = failedOnlineUrl ? new Set([url]) : new Set();
+          if (failedOnlineUrl) {
+            const cacheKey = artworkSearchCacheKey(track);
+            artworkCache.delete(cacheKey);
+            artworkNegativeCache.delete(cacheKey);
+            forgetStoredArtworkResult(cacheKey);
+          }
+          const replacement = await lookupOnlineArtwork(track, excluded);
+          if (tracks[currentIndex] === track && replacement && replacement !== url) {
+            track.onlineCoverUrl = replacement;
+            updateCurrentTrack(track, selectionVersion);
+            renderPlaylist();
           }
         };
         if (url) {
@@ -1445,7 +1479,6 @@
           navigator.mediaSession.metadata = new MediaMetadata({ title: track.title, artist: track.artist || "Unknown artist", album: track.album || "Needle & Groove", artwork });
         }
       }
-
       function updateCurrentTrack(track, version) {
         if (version !== selectionVersion || tracks[currentIndex] !== track) return;
         currentTitle.textContent = track.title;
